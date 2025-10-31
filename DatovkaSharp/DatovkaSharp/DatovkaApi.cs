@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using DatovkaSharp.Services.Access;
@@ -8,7 +9,9 @@ using DatovkaSharp.Services.Operations;
 using DatovkaSharp.Services.Search;
 using DatovkaSharp.Services.Stat;
 using tDbOwnerInfo = DatovkaSharp.Services.Search.tDbOwnerInfo;
+using tDbReqStatus = DatovkaSharp.Services.Access.tDbReqStatus;
 using tIDMessInput = DatovkaSharp.Services.Operations.tIDMessInput;
+using tStatus = DatovkaSharp.Services.Info.tStatus;
 
 namespace DatovkaSharp
 {
@@ -36,8 +39,8 @@ namespace DatovkaSharp
                 tDummyInput input = new tDummyInput();
                 GetOwnerInfoFromLoginResponse? response = await client.GetOwnerInfoFromLoginAsync(input);
                 
-                var output = response.GetOwnerInfoFromLoginResponse1;
-                var status = output?.dbStatus;
+                tGetOwnInfoOutput? output = response.GetOwnerInfoFromLoginResponse1;
+                tDbReqStatus? status = output?.dbStatus;
                 
                 return new DatovkaResult<Services.Access.tDbOwnerInfo>
                 {
@@ -64,8 +67,8 @@ namespace DatovkaSharp
                 tDummyInput input = new tDummyInput();
                 GetUserInfoFromLoginResponse? response = await client.GetUserInfoFromLoginAsync(input);
                 
-                var output = response.GetUserInfoFromLoginResponse1;
-                var status = output?.dbStatus;
+                tGetUserInfoOutput? output = response.GetUserInfoFromLoginResponse1;
+                tDbReqStatus? status = output?.dbStatus;
                 
                 return new DatovkaResult<tDbUserInfo>
                 {
@@ -92,8 +95,8 @@ namespace DatovkaSharp
                 tDummyInput input = new tDummyInput();
                 GetPasswordInfoResponse? response = await client.GetPasswordInfoAsync(input);
                 
-                var output = response.GetPasswordInfoResponse1;
-                var status = output?.dbStatus;
+                tGetPasswInfoOutput? output = response.GetPasswordInfoResponse1;
+                tDbReqStatus? status = output?.dbStatus;
                 
                 return new DatovkaResult<DateTime?>
                 {
@@ -131,13 +134,13 @@ namespace DatovkaSharp
 
                 GetListOfReceivedMessagesResponse? response = await client.GetListOfReceivedMessagesAsync(input);
                 
-                var output = response.GetListOfReceivedMessagesResponse1;
-                var status = output?.dmStatus;
+                tListOfMessOutput? output = response.GetListOfReceivedMessagesResponse1;
+                tStatus? status = output?.dmStatus;
                 tRecord[]? records = output?.dmRecords?.dmRecord;
                 
                 return new DatovkaListResult<tRecord>
                 {
-                    Data = records?.ToList() ?? new List<tRecord>(),
+                    Data = records?.ToList() ?? [],
                     StatusCode = status?.dmStatusCode ?? "0000",
                     StatusMessage = status?.dmStatusMessage ?? "Success",
                     RawResponse = response
@@ -147,7 +150,7 @@ namespace DatovkaSharp
             {
                 return new DatovkaListResult<tRecord>
                 {
-                    Data = new List<tRecord>(),
+                    Data = [],
                     StatusCode = "9999",
                     StatusMessage = ex.Message,
                     RawResponse = ex
@@ -177,13 +180,13 @@ namespace DatovkaSharp
 
                 GetListOfSentMessagesResponse? response = await client.GetListOfSentMessagesAsync(input);
                 
-                var output = response.GetListOfSentMessagesResponse1;
-                var status = output?.dmStatus;
+                tListOfMessOutput? output = response.GetListOfSentMessagesResponse1;
+                tStatus? status = output?.dmStatus;
                 tRecord[]? records = output?.dmRecords?.dmRecord;
                 
                 return new DatovkaListResult<tRecord>
                 {
-                    Data = records?.ToList() ?? new List<tRecord>(),
+                    Data = records?.ToList() ?? [],
                     StatusCode = status?.dmStatusCode ?? "0000",
                     StatusMessage = status?.dmStatusMessage ?? "Success",
                     RawResponse = response
@@ -193,7 +196,7 @@ namespace DatovkaSharp
             {
                 return new DatovkaListResult<tRecord>
                 {
-                    Data = new List<tRecord>(),
+                    Data = [],
                     StatusCode = "9999",
                     StatusMessage = ex.Message,
                     RawResponse = ex
@@ -215,12 +218,12 @@ namespace DatovkaSharp
                 tIDMessInput input = new tIDMessInput { dmID = messageId };
                 SignedMessageDownloadResponse? response = await client.SignedMessageDownloadAsync(input);
                 
-                var output = response.SignedMessageDownloadResponse1;
-                var status = output?.dmStatus;
+                tSignedMessDownOutput? output = response.SignedMessageDownloadResponse1;
+                Services.Operations.tStatus? status = output?.dmStatus;
                 
                 return new DatovkaResult<byte[]>
                 {
-                    Data = output?.dmSignature ?? Array.Empty<byte>(),
+                    Data = output?.dmSignature ?? [],
                     StatusCode = status?.dmStatusCode ?? "0000",
                     StatusMessage = status?.dmStatusMessage ?? "Success",
                     RawResponse = response
@@ -246,12 +249,12 @@ namespace DatovkaSharp
                 tIDMessInput input = new tIDMessInput { dmID = messageId };
                 SignedSentMessageDownloadResponse? response = await client.SignedSentMessageDownloadAsync(input);
                 
-                var output = response.SignedSentMessageDownloadResponse1;
-                var status = output?.dmStatus;
+                tSignedMessDownOutput? output = response.SignedSentMessageDownloadResponse1;
+                Services.Operations.tStatus? status = output?.dmStatus;
                 
                 return new DatovkaResult<byte[]>
                 {
-                    Data = output?.dmSignature ?? Array.Empty<byte>(),
+                    Data = output?.dmSignature ?? [],
                     StatusCode = status?.dmStatusCode ?? "0000",
                     StatusMessage = status?.dmStatusMessage ?? "Success",
                     RawResponse = response
@@ -277,12 +280,12 @@ namespace DatovkaSharp
                 Services.Info.tIDMessInput input = new Services.Info.tIDMessInput { dmID = messageId };
                 GetSignedDeliveryInfoResponse? response = await client.GetSignedDeliveryInfoAsync(input);
                 
-                var output = response.GetSignedDeliveryInfoResponse1;
-                var status = output?.dmStatus;
+                tSignDelivMessOutput? output = response.GetSignedDeliveryInfoResponse1;
+                tStatus? status = output?.dmStatus;
                 
                 return new DatovkaResult<byte[]>
                 {
-                    Data = output?.dmSignature ?? Array.Empty<byte>(),
+                    Data = output?.dmSignature ?? [],
                     StatusCode = status?.dmStatusCode ?? "0000",
                     StatusMessage = status?.dmStatusMessage ?? "Success",
                     RawResponse = response
@@ -308,21 +311,19 @@ namespace DatovkaSharp
                 tIDMessInput input = new tIDMessInput { dmID = messageId };
                 MessageDownloadResponse? response = await client.MessageDownloadAsync(input);
                 
-                var output = response.MessageDownloadResponse1;
-                var status = output?.dmStatus;
-                List<DataBoxAttachment> attachments = new List<DataBoxAttachment>();
+                tMessDownOutput? output = response.MessageDownloadResponse1;
+                Services.Operations.tStatus? status = output?.dmStatus;
+                List<DataBoxAttachment> attachments = [];
                 tFilesArrayDmFile[]? dmFiles = output?.dmReturnedMessage?.dmDm?.dmFiles;
                 
-                if (dmFiles != null && dmFiles.Length > 0)
+                if (dmFiles is { Length: > 0 })
                 {
-                    foreach (var file in dmFiles)
+                    foreach (tFilesArrayDmFile file in dmFiles)
                     {
-                        if (file == null) continue;
-                        
                         DataBoxAttachment attachment = new DataBoxAttachment
                         {
                             FileName = file.dmFileDescr ?? "unnamed",
-                            Content = file.Item as byte[] ?? Array.Empty<byte>(),
+                            Content = file.Item as byte[] ?? [],
                             MimeType = file.dmMimeType ?? "application/octet-stream"
                         };
                         attachments.Add(attachment);
@@ -341,7 +342,7 @@ namespace DatovkaSharp
             {
                 return new DatovkaListResult<DataBoxAttachment>
                 {
-                    Data = new List<DataBoxAttachment>(),
+                    Data = [],
                     StatusCode = "9999",
                     StatusMessage = ex.Message,
                     RawResponse = ex
@@ -364,8 +365,8 @@ namespace DatovkaSharp
                 tFindDBInput input = new tFindDBInput { dbOwnerInfo = ownerInfo };
                 FindDataBoxResponse? response = await client.FindDataBoxAsync(input);
                 
-                var output = response.FindDataBoxResponse1;
-                var status = output?.dbStatus;
+                tFindDBOuput? output = response.FindDataBoxResponse1;
+                Services.Search.tDbReqStatus? status = output?.dbStatus;
                 
                 return new DatovkaResult<tDbOwnersArray>
                 {
@@ -382,57 +383,141 @@ namespace DatovkaSharp
         }
 
         /// <summary>
-        /// Create a basic data message
+        /// Create a basic data message from file paths
         /// </summary>
         public tMessageCreateInput CreateBasicDataMessage(
             string recipientDataBoxId, 
             string subject, 
             List<string>? attachmentPaths = null)
         {
+            // Convert file paths to DataBoxAttachment objects using FromStream
+            List<DataBoxAttachment>? attachments = null;
+            if (attachmentPaths is { Count: > 0 })
+            {
+                attachments = [];
+                foreach (string? path in attachmentPaths)
+                {
+                    if (File.Exists(path))
+                    {
+                        using FileStream fileStream = File.OpenRead(path);
+                        attachments.Add(DataBoxAttachment.FromStream(fileStream, Path.GetFileName(path)));
+                    }
+                }
+            }
+
+            // Delegate to the main overload
+            return CreateBasicDataMessage(recipientDataBoxId, subject, attachments);
+        }
+
+        /// <summary>
+        /// Create a basic data message with attachments from DataBoxAttachment objects (e.g., from streams)
+        /// </summary>
+        public tMessageCreateInput CreateBasicDataMessage(
+            string recipientDataBoxId, 
+            string subject, 
+            List<DataBoxAttachment>? attachments = null)
+        {
             if (string.IsNullOrEmpty(recipientDataBoxId))
                 throw new ArgumentNullException(nameof(recipientDataBoxId));
             if (string.IsNullOrEmpty(subject))
                 throw new ArgumentNullException(nameof(subject));
 
-            // Create envelope
-            tMessageCreateInputDmEnvelope envelope = new tMessageCreateInputDmEnvelope
-            {
-                dbIDRecipient = recipientDataBoxId,
-                dmAnnotation = subject
-            };
+            tMessageCreateInput messageInput = CreateMessageWithEnvelope(recipientDataBoxId, subject);
+            messageInput.dmFiles = ConvertAttachmentsToFiles(attachments);
 
-            // Create message input
-            tMessageCreateInput messageInput = new tMessageCreateInput
-            {
-                dmEnvelope = envelope
-            };
+            return messageInput;
+        }
 
-            // Create files array (always required, even if empty)
-            List<tFilesArrayDmFile> files = new List<tFilesArrayDmFile>();
-            
-            // Add attachments if provided
-            if (attachmentPaths != null && attachmentPaths.Count > 0)
+        private tMessageCreateInput CreateMessageWithEnvelope(string recipientDataBoxId, string subject)
+        {
+            return new tMessageCreateInput
             {
-                foreach (string? path in attachmentPaths)
+                dmEnvelope = new tMessageCreateInputDmEnvelope
                 {
-                    if (!System.IO.File.Exists(path))
-                        continue;
+                    dbIDRecipient = recipientDataBoxId,
+                    dmAnnotation = subject
+                }
+            };
+        }
 
-                    DataBoxAttachment attachment = DataBoxAttachment.FromFile(path);
-                    tFilesArrayDmFile file = new tFilesArrayDmFile
+        private tFilesArrayDmFile[] ConvertAttachmentsToFiles(List<DataBoxAttachment>? attachments)
+        {
+            List<tFilesArrayDmFile> files = [];
+
+            if (attachments is { Count: > 0 })
+            {
+                foreach (DataBoxAttachment attachment in attachments)
+                {
+                    files.Add(new tFilesArrayDmFile
                     {
                         dmFileDescr = attachment.FileName,
                         dmMimeType = attachment.MimeType,
                         Item = attachment.Content
-                    };
-                    files.Add(file);
+                    });
                 }
             }
 
-            // Always set dmFiles, even if empty (required by the API)
-            messageInput.dmFiles = files.ToArray();
+            return files.ToArray();
+        }
 
-            return messageInput;
+        /// <summary>
+        /// Get data box credit information
+        /// </summary>
+        /// <param name="dataBoxId">Data box ID (optional, uses logged-in user's ID if not provided)</param>
+        /// <param name="fromDate">Optional start date for credit history</param>
+        /// <param name="toDate">Optional end date for credit history</param>
+        public async Task<DatovkaResult<tDBCreditInfoOutput>> GetDataBoxCreditInfoAsync(
+            string? dataBoxId = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null)
+        {
+            try
+            {
+                // If no dataBoxId provided, get the current user's data box ID
+                if (string.IsNullOrEmpty(dataBoxId))
+                {
+                    DatovkaResult<Services.Access.tDbOwnerInfo> ownerInfoResult = await GetDataBoxInfoAsync();
+                    if (!ownerInfoResult.IsSuccess || ownerInfoResult.Data == null)
+                    {
+                        return DatovkaResult<tDBCreditInfoOutput>.Failure(
+                            ownerInfoResult.StatusCode,
+                            $"Failed to get data box ID: {ownerInfoResult.StatusMessage}",
+                            ownerInfoResult.RawResponse
+                        );
+                    }
+                    dataBoxId = ownerInfoResult.Data.dbID;
+                }
+
+                DataBoxSearchPortTypeClient client = _client.GetSearchClient();
+                tDBCreditInfoInput input = new tDBCreditInfoInput
+                {
+                    dbID = dataBoxId,
+                    ciFromDate = fromDate,
+                    ciTodate = toDate  // Note: API has a typo "Todate" instead of "ToDate"
+                };
+
+                DataBoxCreditInfoResponse? response = await client.DataBoxCreditInfoAsync(input);
+
+                if (response?.DataBoxCreditInfoResponse1?.dbStatus?.dbStatusCode == "0000")
+                {
+                    return DatovkaResult<tDBCreditInfoOutput>.Success(
+                        response.DataBoxCreditInfoResponse1,
+                        response.DataBoxCreditInfoResponse1.dbStatus.dbStatusCode,
+                        response.DataBoxCreditInfoResponse1.dbStatus.dbStatusMessage,
+                        response
+                    );
+                }
+
+                return DatovkaResult<tDBCreditInfoOutput>.Failure(
+                    response?.DataBoxCreditInfoResponse1?.dbStatus?.dbStatusCode ?? "9999",
+                    response?.DataBoxCreditInfoResponse1?.dbStatus?.dbStatusMessage ?? "Unknown error",
+                    response
+                );
+            }
+            catch (Exception ex)
+            {
+                return DatovkaResult<tDBCreditInfoOutput>.FromException(ex);
+            }
         }
 
         /// <summary>
@@ -451,7 +536,7 @@ namespace DatovkaSharp
                 dmOperationsPortTypeClient client = _client.GetOperationsClient();
                 CreateMessageResponse? response = await client.CreateMessageAsync(message);
                 
-                var output = response.CreateMessageResponse1;
+                tMessageCreateOutput? output = response.CreateMessageResponse1;
                 
                 return new DatovkaResult<tMessageCreateOutput>
                 {
@@ -478,8 +563,8 @@ namespace DatovkaSharp
                 tNumOfMessagesInput input = new tNumOfMessagesInput();
                 NumOfMessagesResponse? response = await client.NumOfMessagesAsync(input);
                 
-                var output = response.NumOfMessagesResponse1;
-                var status = output?.dbStatus;
+                tNumOfMessagesOutput? output = response.NumOfMessagesResponse1;
+                tStatReqStatus? status = output?.dbStatus;
                 
                 return new DatovkaResult<string>
                 {
@@ -492,6 +577,64 @@ namespace DatovkaSharp
             catch (Exception ex)
             {
                 return DatovkaResult<string>.FromException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Download message attachments
+        /// </summary>
+        public async Task<DatovkaListResult<DataBoxAttachment>> GetMessageAttachmentsAsync(string messageId)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(messageId))
+                    throw new ArgumentNullException(nameof(messageId));
+
+                dmOperationsPortTypeClient client = _client.GetOperationsClient();
+                tIDMessInput input = new tIDMessInput { dmID = messageId };
+                MessageDownloadResponse? response = await client.MessageDownloadAsync(input);
+
+                tMessDownOutput? output = response?.MessageDownloadResponse1;
+                Services.Operations.tStatus? status = output?.dmStatus;
+
+                if (status?.dmStatusCode == "0000")
+                {
+                    tFilesArrayDmFile[]? files = output?.dmReturnedMessage?.dmDm?.dmFiles;
+                    List<DataBoxAttachment> attachments = [];
+
+                    if (files != null)
+                    {
+                        foreach (var file in files)
+                        {
+                            if (file?.Item is byte[] content)
+                            {
+                                attachments.Add(new DataBoxAttachment
+                                {
+                                    FileName = file.dmFileDescr ?? "unnamed",
+                                    MimeType = file.dmMimeType ?? "application/octet-stream",
+                                    Content = content
+                                });
+                            }
+                        }
+                    }
+
+                    return DatovkaListResult<DataBoxAttachment>.Success(
+                        attachments,
+                        status.dmStatusCode,
+                        status.dmStatusMessage,
+                        response
+                    );
+                }
+
+                return DatovkaListResult<DataBoxAttachment>.Failure(
+                    status?.dmStatusCode ?? "9999",
+                    status?.dmStatusMessage ?? "Unknown error",
+                    response
+                );
+            }
+            catch (Exception ex)
+            {
+                return DatovkaListResult<DataBoxAttachment>.FromException(ex);
             }
         }
 
@@ -509,8 +652,8 @@ namespace DatovkaSharp
                 Services.Info.tIDMessInput input = new Services.Info.tIDMessInput { dmID = messageId };
                 MarkMessageAsDownloadedResponse? response = await client.MarkMessageAsDownloadedAsync(input);
                 
-                var output = response.MarkMessageAsDownloadedResponse1;
-                var status = output?.dmStatus;
+                tMarkMessOutput? output = response.MarkMessageAsDownloadedResponse1;
+                tStatus? status = output?.dmStatus;
                 bool success = status?.dmStatusCode == "0000";
                 
                 return new DatovkaResult<bool>
@@ -547,8 +690,8 @@ namespace DatovkaSharp
                 };
                 ChangeISDSPasswordResponse? response = await client.ChangeISDSPasswordAsync(input);
                 
-                var output = response.ChangeISDSPasswordResponse1;
-                var status = output?.dbStatus;
+                tReqStatusOutput? output = response.ChangeISDSPasswordResponse1;
+                tDbReqStatus? status = output?.dbStatus;
                 bool success = status?.dbStatusCode == "0000";
                 
                 return new DatovkaResult<bool>
@@ -576,8 +719,8 @@ namespace DatovkaSharp
                 tDummyInput input = new tDummyInput();
                 GetPasswordInfoResponse? response = await client.GetPasswordInfoAsync(input);
                 
-                var output = response.GetPasswordInfoResponse1;
-                var status = output?.dbStatus;
+                tGetPasswInfoOutput? output = response.GetPasswordInfoResponse1;
+                tDbReqStatus? status = output?.dbStatus;
                 
                 return new DatovkaResult<tGetPasswInfoOutput>
                 {
@@ -608,8 +751,8 @@ namespace DatovkaSharp
                 tFindDBInput input = new tFindDBInput { dbOwnerInfo = searchCriteria };
                 FindDataBoxResponse? response = await client.FindDataBoxAsync(input);
                 
-                var output = response.FindDataBoxResponse1;
-                var status = output?.dbStatus;
+                tFindDBOuput? output = response.FindDataBoxResponse1;
+                Services.Search.tDbReqStatus? status = output?.dbStatus;
                 
                 return new DatovkaResult<tDbOwnersArray>
                 {
@@ -624,27 +767,5 @@ namespace DatovkaSharp
                 return DatovkaResult<tDbOwnersArray>.FromException(ex);
             }
         }
-
-        // Synchronous wrappers for compatibility
-        public DatovkaResult<Services.Access.tDbOwnerInfo> GetDataBoxInfo() => GetDataBoxInfoAsync().GetAwaiter().GetResult();
-        public DatovkaResult<tDbUserInfo> GetUserInfo() => GetUserInfoAsync().GetAwaiter().GetResult();
-        public DatovkaResult<DateTime?> GetPasswordExpires() => GetPasswordExpiresAsync().GetAwaiter().GetResult();
-        public DatovkaListResult<tRecord> GetListOfReceivedMessages(int days = 90, int limit = 1000) 
-            => GetListOfReceivedMessagesAsync(days, limit).GetAwaiter().GetResult();
-        public DatovkaListResult<tRecord> GetListOfSentMessages(int days = 90, int limit = 1000) 
-            => GetListOfSentMessagesAsync(days, limit).GetAwaiter().GetResult();
-        public DatovkaResult<byte[]> DownloadSignedReceivedMessage(string messageId) 
-            => DownloadSignedReceivedMessageAsync(messageId).GetAwaiter().GetResult();
-        public DatovkaResult<byte[]> DownloadSignedSentMessage(string messageId) 
-            => DownloadSignedSentMessageAsync(messageId).GetAwaiter().GetResult();
-        public DatovkaResult<byte[]> DownloadDeliveryInfo(string messageId) 
-            => DownloadDeliveryInfoAsync(messageId).GetAwaiter().GetResult();
-        public DatovkaListResult<DataBoxAttachment> GetReceivedDataMessageAttachments(string messageId) 
-            => GetReceivedDataMessageAttachmentsAsync(messageId).GetAwaiter().GetResult();
-        public DatovkaResult<tDbOwnersArray> FindDataBoxById(string dataBoxId) 
-            => FindDataBoxByIdAsync(dataBoxId).GetAwaiter().GetResult();
-        public DatovkaResult<tMessageCreateOutput> SendDataMessage(tMessageCreateInput message) 
-            => SendDataMessageAsync(message).GetAwaiter().GetResult();
-        public DatovkaResult<string> GetStats() => GetStatsAsync().GetAwaiter().GetResult();
     }
 }

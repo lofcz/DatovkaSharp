@@ -31,7 +31,7 @@ namespace DatovkaSharp
         public DataBoxAttachment()
         {
             FileName = string.Empty;
-            Content = Array.Empty<byte>();
+            Content = [];
             MimeType = "application/octet-stream";
         }
 
@@ -64,6 +64,41 @@ namespace DatovkaSharp
             }
 
             return new DataBoxAttachment(fileName, content, mimeType);
+        }
+
+        /// <summary>
+        /// Create attachment from stream
+        /// </summary>
+        /// <param name="stream">The stream containing the file data</param>
+        /// <param name="fileName">The name of the file (including extension)</param>
+        /// <param name="mimeType">Optional MIME type (will be inferred from fileName if not provided)</param>
+        public static DataBoxAttachment FromStream(Stream stream, string fileName, string? mimeType = null)
+        {
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
+            if (string.IsNullOrEmpty(fileName))
+                throw new ArgumentNullException(nameof(fileName));
+
+            // Read content from stream
+            byte[] content;
+            using (MemoryStream memoryStream = new MemoryStream())
+            {
+                stream.CopyTo(memoryStream);
+                content = memoryStream.ToArray();
+            }
+
+            string finalMimeType = mimeType ?? DataBoxHelper.GetMimeType(fileName);
+
+            // Handle text files - they need double base64 encoding
+            string extension = Path.GetExtension(fileName).TrimStart('.').ToLowerInvariant();
+            if (extension == "txt")
+            {
+                // Double encode text files as per Czech Data Box requirements
+                string base64Once = Convert.ToBase64String(content);
+                content = System.Text.Encoding.UTF8.GetBytes(base64Once);
+            }
+
+            return new DataBoxAttachment(fileName, content, finalMimeType);
         }
 
         /// <summary>

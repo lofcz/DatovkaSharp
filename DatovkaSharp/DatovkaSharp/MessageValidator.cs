@@ -88,7 +88,7 @@ namespace DatovkaSharp
                 return 0;
 
             long totalSize = 0;
-            foreach (var file in files)
+            foreach (tFilesArrayDmFile file in files)
             {
                 if (file.Item is byte[] content)
                 {

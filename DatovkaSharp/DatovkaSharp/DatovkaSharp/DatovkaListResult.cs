@@ -69,10 +69,24 @@ namespace DatovkaSharp
         {
             return new DatovkaListResult<T>
             {
-                Data = new List<T>(),
+                Data = [],
                 StatusCode = statusCode,
                 StatusMessage = statusMessage,
                 RawResponse = rawResponse
+            };
+        }
+
+        /// <summary>
+        /// Creates a failed list result from an exception.
+        /// </summary>
+        public new static DatovkaListResult<T> FromException(System.Exception ex)
+        {
+            return new DatovkaListResult<T>
+            {
+                Data = [],
+                StatusCode = "9999",
+                StatusMessage = ex.Message,
+                RawResponse = ex
             };
         }
     }

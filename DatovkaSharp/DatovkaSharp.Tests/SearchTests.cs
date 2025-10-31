@@ -15,7 +15,7 @@ namespace DatovkaSharp.Tests
         [SetUp]
         public void Setup()
         {
-            var config = TestConfiguration.Config;
+            AppConfig config = TestConfiguration.Config;
             _client = new DatovkaClient(DataBoxEnvironment.Test);
             _client.LoginWithUsernameAndPassword(config.Account1.Username, config.Account1.Password);
         }
@@ -30,13 +30,13 @@ namespace DatovkaSharp.Tests
         public async Task FindDataBoxById_WithOwnDataBoxId_ShouldReturnResult()
         {
             // Arrange
-            var ownInfoResult = await _client!.Api.GetDataBoxInfoAsync();
+            DatovkaResult<tDbOwnerInfo> ownInfoResult = await _client!.Api.GetDataBoxInfoAsync();
             Assert.IsTrue(ownInfoResult.IsSuccess, "Should get own data box info");
             Assert.IsNotNull(ownInfoResult.Data, "Own data box info should not be null");
             string? dataBoxId = ownInfoResult.Data.dbID;
 
             // Act
-            var result = await _client!.Api.FindDataBoxByIdAsync(dataBoxId!);
+            DatovkaResult<tDbOwnersArray> result = await _client!.Api.FindDataBoxByIdAsync(dataBoxId!);
 
             // Assert
             Assert.IsTrue(result.IsSuccess, "Search operation should succeed");
@@ -48,13 +48,13 @@ namespace DatovkaSharp.Tests
         public async Task FindDataBoxById_WithKnownTestDataBoxId_ShouldCompleteSuccessfully()
         {
             // Arrange - Get the actual databox ID from our login
-            var ownInfoResult = await _client!.Api.GetDataBoxInfoAsync();
+            DatovkaResult<tDbOwnerInfo> ownInfoResult = await _client!.Api.GetDataBoxInfoAsync();
             Assert.IsTrue(ownInfoResult.IsSuccess, "Should get own data box info");
             Assert.IsNotNull(ownInfoResult.Data, "Own data box info should not be null");
             string testDataBoxId = ownInfoResult.Data.dbID!;
 
             // Act
-            var result = await _client!.Api.FindDataBoxByIdAsync(testDataBoxId);
+            DatovkaResult<tDbOwnersArray> result = await _client!.Api.FindDataBoxByIdAsync(testDataBoxId);
 
             // Assert
             Assert.IsTrue(result.IsSuccess, "Search operation should succeed");

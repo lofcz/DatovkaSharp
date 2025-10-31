@@ -90,7 +90,7 @@ namespace DatovkaSharp
 
         public DataBoxMessage()
         {
-            Attachments = new List<DataBoxAttachment>();
+            Attachments = [];
         }
 
         /// <summary>

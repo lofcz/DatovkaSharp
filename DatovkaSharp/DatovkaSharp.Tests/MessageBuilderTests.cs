@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text;
 using DatovkaSharp.Exceptions;
+using DatovkaSharp.Services.Operations;
 using NUnit.Framework;
 
 namespace DatovkaSharp.Tests
@@ -33,10 +34,10 @@ namespace DatovkaSharp.Tests
         public void Build_WithValidMessage_ShouldSucceed()
         {
             // Arrange
-            var builder = new DatovkaMessageBuilder();
+            DatovkaMessageBuilder builder = new DatovkaMessageBuilder();
 
             // Act
-            var message = builder
+            tMessageCreateInput message = builder
                 .To("testbox123")
                 .WithSubject("Test Subject")
                 .AddTextContent("content.txt", "Test message content")
@@ -54,10 +55,10 @@ namespace DatovkaSharp.Tests
         public void Build_WithFileAttachment_ShouldSucceed()
         {
             // Arrange
-            var builder = new DatovkaMessageBuilder();
+            DatovkaMessageBuilder builder = new DatovkaMessageBuilder();
 
             // Act
-            var message = builder
+            tMessageCreateInput message = builder
                 .To("testbox123")
                 .WithSubject("Test with attachment")
                 .AddAttachment(_testFilePath)
@@ -73,10 +74,10 @@ namespace DatovkaSharp.Tests
         public void Build_WithMultipleAttachments_ShouldSucceed()
         {
             // Arrange
-            var builder = new DatovkaMessageBuilder();
+            DatovkaMessageBuilder builder = new DatovkaMessageBuilder();
 
             // Act
-            var message = builder
+            tMessageCreateInput message = builder
                 .To("testbox123")
                 .WithSubject("Multiple attachments")
                 .AddTextContent("file1.txt", "Content 1")
@@ -93,10 +94,10 @@ namespace DatovkaSharp.Tests
         public void Build_WithoutRecipient_ShouldThrowException()
         {
             // Arrange
-            var builder = new DatovkaMessageBuilder();
+            DatovkaMessageBuilder builder = new DatovkaMessageBuilder();
 
             // Act & Assert
-            var ex = Assert.Throws<MissingRequiredFieldException>(() =>
+            MissingRequiredFieldException? ex = Assert.Throws<MissingRequiredFieldException>(() =>
             {
                 builder
                     .WithSubject("Test")
@@ -111,10 +112,10 @@ namespace DatovkaSharp.Tests
         public void Build_WithoutSubject_ShouldThrowException()
         {
             // Arrange
-            var builder = new DatovkaMessageBuilder();
+            DatovkaMessageBuilder builder = new DatovkaMessageBuilder();
 
             // Act & Assert
-            var ex = Assert.Throws<MissingRequiredFieldException>(() =>
+            MissingRequiredFieldException? ex = Assert.Throws<MissingRequiredFieldException>(() =>
             {
                 builder
                     .To("testbox123")
@@ -129,10 +130,10 @@ namespace DatovkaSharp.Tests
         public void Build_WithoutAttachments_ShouldThrowException()
         {
             // Arrange
-            var builder = new DatovkaMessageBuilder();
+            DatovkaMessageBuilder builder = new DatovkaMessageBuilder();
 
             // Act & Assert
-            var ex = Assert.Throws<MissingMainFileException>(() =>
+            MissingMainFileException? ex = Assert.Throws<MissingMainFileException>(() =>
             {
                 builder
                     .To("testbox123")
@@ -147,8 +148,8 @@ namespace DatovkaSharp.Tests
         public void AddAttachment_ExceedingSizeLimit_ShouldThrowException()
         {
             // Arrange
-            var builder = new DatovkaMessageBuilder();
-            var largeContent = new byte[MessageValidator.MaxTotalSizeBytes + 1];
+            DatovkaMessageBuilder builder = new DatovkaMessageBuilder();
+            byte[] largeContent = new byte[MessageValidator.MaxTotalSizeBytes + 1];
 
             // Act & Assert
             Assert.Throws<FileSizeOverflowException>(() =>
@@ -164,10 +165,10 @@ namespace DatovkaSharp.Tests
         public void WithPersonalDelivery_ShouldSetFlag()
         {
             // Arrange
-            var builder = new DatovkaMessageBuilder();
+            DatovkaMessageBuilder builder = new DatovkaMessageBuilder();
 
             // Act
-            var message = builder
+            tMessageCreateInput message = builder
                 .To("testbox123")
                 .WithSubject("Test")
                 .AsPersonalDelivery(true)
@@ -182,9 +183,9 @@ namespace DatovkaSharp.Tests
         public void GetCurrentTotalSize_ShouldReturnCorrectSize()
         {
             // Arrange
-            var builder = new DatovkaMessageBuilder();
-            var content = "Test content";
-            var contentBytes = Encoding.UTF8.GetBytes(content);
+            DatovkaMessageBuilder builder = new DatovkaMessageBuilder();
+            string content = "Test content";
+            byte[] contentBytes = Encoding.UTF8.GetBytes(content);
 
             // Act
             builder.AddTextContent("test.txt", content);
@@ -197,7 +198,7 @@ namespace DatovkaSharp.Tests
         public void GetAttachmentCount_ShouldReturnCorrectCount()
         {
             // Arrange
-            var builder = new DatovkaMessageBuilder();
+            DatovkaMessageBuilder builder = new DatovkaMessageBuilder();
 
             // Act
             builder.AddTextContent("file1.txt", "Content 1");
@@ -211,7 +212,7 @@ namespace DatovkaSharp.Tests
         public void FluentAPI_ShouldChainProperly()
         {
             // Arrange & Act
-            var builder = new DatovkaMessageBuilder()
+            DatovkaMessageBuilder builder = new DatovkaMessageBuilder()
                 .To("testbox123")
                 .WithSubject("Fluent test")
                 .WithSenderIdent("SENDER001")
@@ -220,7 +221,7 @@ namespace DatovkaSharp.Tests
                 .AsPersonalDelivery(true)
                 .AddTextContent("content.txt", "Test content");
 
-            var message = builder.Build();
+            tMessageCreateInput message = builder.Build();
 
             // Assert
             Assert.IsNotNull(message);

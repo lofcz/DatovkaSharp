@@ -536,8 +536,6 @@ DatovkaSharp/
 
 - .NET Standard 2.0 or higher
 - System.ServiceModel.Http (>= v4.10.3)
-- System.ServiceModel.Primitives (>= v4.10.3)
-- System.ServiceModel.Security (>= v4.10.3)
 
 ## Testing
 

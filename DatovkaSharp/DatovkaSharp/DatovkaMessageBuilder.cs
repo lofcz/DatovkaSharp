@@ -25,7 +25,7 @@ namespace DatovkaSharp
             {
                 dmEnvelope = new tMessageCreateInputDmEnvelope()
             };
-            _files = new List<tFilesArrayDmFile>();
+            _files = [];
             _currentTotalSize = 0;
         }
 

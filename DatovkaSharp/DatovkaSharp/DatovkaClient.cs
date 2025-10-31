@@ -3,6 +3,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Description;
+using System.Threading.Tasks;
 using DatovkaSharp.Services.Access;
 using DatovkaSharp.Services.Info;
 using DatovkaSharp.Services.Operations;
@@ -257,12 +258,12 @@ namespace DatovkaSharp
         /// <summary>
         /// Test the connection to ISDS
         /// </summary>
-        public bool TestConnection()
+        public async Task<bool> TestConnectionAsync()
         {
             try
             {
-                Api.GetStats();
-                return true;
+                DatovkaResult<string> result = await Api.GetStatsAsync();
+                return result.IsSuccess;
             }
             catch
             {

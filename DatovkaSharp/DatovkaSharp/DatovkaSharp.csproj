@@ -16,12 +16,25 @@
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <Deterministic>true</Deterministic>
         <PackageId>Datovka</PackageId>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <Version>1.0.2</Version>
     </PropertyGroup>
 
     <ItemGroup>
+        <None Include="..\..\README.md">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+    </ItemGroup>
+    
+    <!-- System.ServiceModel packages for old frameworks (net4*, netstandard*) -->
+    <ItemGroup Condition="$(TargetFramework.StartsWith('net4')) OR $(TargetFramework.StartsWith('netstandard'))">
         <PackageReference Include="System.ServiceModel.Http" Version="[4.10.3, )" />
-        <PackageReference Include="System.ServiceModel.Primitives" Version="[4.10.3, )" />
-        <PackageReference Include="System.ServiceModel.Security" Version="[4.10.3, )" />
+    </ItemGroup>
+
+    <!-- System.ServiceModel packages for modern net core -->
+    <ItemGroup Condition="!$(TargetFramework.StartsWith('net4')) AND !$(TargetFramework.StartsWith('netstandard'))">
+        <PackageReference Include="System.ServiceModel.Http" Version="[8.0.0, )" />
     </ItemGroup>
 
     <ItemGroup>

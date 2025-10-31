@@ -6,8 +6,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using DatovkaSharp.Services.Access;
 using DatovkaSharp.Services.Info;
 using DatovkaSharp.Services.Operations;
+using UglyToad.PdfPig;
+using UglyToad.PdfPig.Content;
 
 namespace DatovkaSharp.Tests
 {
@@ -19,7 +22,7 @@ namespace DatovkaSharp.Tests
         [SetUp]
         public void Setup()
         {
-            var config = TestConfiguration.Config;
+            AppConfig config = TestConfiguration.Config;
             _client = new DatovkaClient(DataBoxEnvironment.Test);
             _client.LoginWithUsernameAndPassword(config.Account1.Username, config.Account1.Password);
         }
@@ -31,10 +34,266 @@ namespace DatovkaSharp.Tests
         }
 
         [Test]
+        public async Task SendTextFile_RecipientShouldReceiveCorrectContent()
+        {
+            // Arrange - Create a text file with known content (UTF-8 without BOM)
+            string originalText = "Hello from DatovkaSharp!\nThis is a test message.\nLine 3 with special chars: čřžýáíé";
+            string tempFilePath = Path.Combine(Path.GetTempPath(), $"test_content_{DateTime.Now:yyyyMMddHHmmss}.txt");
+            File.WriteAllText(tempFilePath, originalText, new UTF8Encoding(false)); // UTF-8 without BOM
+
+            try
+            {
+                // Get recipient's data box ID
+                AppConfig config = TestConfiguration.Config;
+                using DatovkaClient recipientClient = new DatovkaClient(DataBoxEnvironment.Test);
+                recipientClient.LoginWithUsernameAndPassword(config.Account2.Username, config.Account2.Password);
+                DatovkaResult<tDbOwnerInfo> recipientInfoResult = await recipientClient.Api.GetDataBoxInfoAsync();
+                Assert.IsTrue(recipientInfoResult.IsSuccess, "Should get recipient data box info");
+                Assert.IsNotNull(recipientInfoResult.Data, "Recipient data box info should not be null");
+                string recipientId = recipientInfoResult.Data.dbID!;
+                
+                // Send message with the text file
+                List<string> attachmentPaths = new List<string> { tempFilePath };
+                tMessageCreateInput message = _client!.Api.CreateBasicDataMessage(
+                    recipientDataBoxId: recipientId,
+                    subject: $"Content verification test - {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
+                    attachmentPaths: attachmentPaths
+                );
+
+                DatovkaResult<tMessageCreateOutput> sendResult = await _client!.Api.SendDataMessageAsync(message);
+                Assert.IsTrue(sendResult.IsSuccess, $"Message should be sent successfully. Got: {sendResult.StatusMessage}");
+                Assert.IsNotNull(sendResult.Data.dmID, "Message ID should not be null");
+                string messageId = sendResult.Data.dmID!;
+                Console.WriteLine($"✓ Message sent! Message ID: {messageId}");
+
+                // Poll for message delivery
+                Console.WriteLine("  Polling for message delivery...");
+                tRecord? receivedMessage = null;
+                int attempts = 0;
+                int maxAttempts = 10;
+                
+                while (receivedMessage == null && attempts < maxAttempts)
+                {
+                    attempts++;
+                    await Task.Delay(1000);
+                    
+                    DatovkaListResult<tRecord> messagesResult = await recipientClient.Api.GetListOfReceivedMessagesAsync(days: 1, limit: 50);
+                    if (messagesResult is { IsSuccess: true, HasItems: true })
+                    {
+                        receivedMessage = messagesResult.Data!.FirstOrDefault(m => m.dmID == messageId);
+                    }
+                    
+                    if (receivedMessage == null)
+                    {
+                        Console.WriteLine($"  Attempt {attempts}/{maxAttempts}: Message not yet received...");
+                    }
+                }
+
+                Assert.IsNotNull(receivedMessage, $"Should find the sent message {messageId} after {maxAttempts} attempts");
+                Console.WriteLine($"✓ Message received by recipient!");
+
+                // Download attachments
+                DatovkaListResult<DataBoxAttachment> attachmentsResult = await recipientClient.Api.GetMessageAttachmentsAsync(messageId);
+                Assert.IsTrue(attachmentsResult.IsSuccess, "Should download attachments successfully");
+                Assert.IsTrue(attachmentsResult.HasItems, "Should have at least one attachment");
+                Console.WriteLine($"✓ Downloaded {attachmentsResult.Count} attachment(s)");
+
+                // Get the attachment (should be the first one)
+                DataBoxAttachment attachment = attachmentsResult.Data!.First();
+                Assert.IsNotNull(attachment, "Attachment should not be null");
+                Assert.IsNotNull(attachment.Content, "Attachment content should not be null");
+                Console.WriteLine($"  Attachment: {attachment.FileName}, Type: {attachment.MimeType}, Size: {attachment.Content.Length} bytes");
+
+                // Decode the content and compare with original
+                // Note: If double base64 encoding is used, we need to decode twice
+                string receivedText;
+                try
+                {
+                    // First, try to decode as if it's double-encoded (base64 string inside the bytes)
+                    string base64String = Encoding.UTF8.GetString(attachment.Content);
+                    byte[] decodedBytes = Convert.FromBase64String(base64String);
+                    receivedText = Encoding.UTF8.GetString(decodedBytes);
+                    Console.WriteLine("  ℹ Attachment was double base64 encoded (as expected for .txt files)");
+                }
+                catch
+                {
+                    // If that fails, just decode once
+                    receivedText = Encoding.UTF8.GetString(attachment.Content);
+                    Console.WriteLine("  ℹ Attachment was single base64 encoded");
+                }
+
+                // Assert content matches
+                Assert.AreEqual(originalText, receivedText, "Received text content should match original text");
+                Console.WriteLine($"✓ Content verification PASSED!");
+                Console.WriteLine($"  Original : \"{originalText.Substring(0, Math.Min(50, originalText.Length))}...\"");
+                Console.WriteLine($"  Received : \"{receivedText.Substring(0, Math.Min(50, receivedText.Length))}...\"");
+            }
+            finally
+            {
+                // Clean up the test file
+                if (File.Exists(tempFilePath))
+                {
+                    File.Delete(tempFilePath);
+                }
+            }
+        }
+
+        [Test]
+        public async Task SendPdfFile_RecipientShouldReceiveCorrectContent()
+        {
+            // Arrange - Get the sample PDF file
+            string pdfFilePath = Path.Combine(AppContext.BaseDirectory, "Files", "sample.pdf");
+            Assert.IsTrue(File.Exists(pdfFilePath), $"Sample PDF file should exist at {pdfFilePath}");
+
+            // Extract text from original PDF
+            string originalText;
+            using (PdfDocument document = PdfDocument.Open(pdfFilePath))
+            {
+                StringBuilder textBuilder = new StringBuilder();
+                foreach (Page page in document.GetPages())
+                {
+                    textBuilder.Append(page.Text);
+                }
+                originalText = textBuilder.ToString().Trim();
+            }
+            
+            Console.WriteLine($"Original PDF text length: {originalText.Length} characters");
+            Console.WriteLine($"First 100 chars: {originalText.Substring(0, Math.Min(100, originalText.Length))}...");
+
+            try
+            {
+                // Get recipient's data box ID
+                AppConfig config = TestConfiguration.Config;
+                using DatovkaClient recipientClient = new DatovkaClient(DataBoxEnvironment.Test);
+                recipientClient.LoginWithUsernameAndPassword(config.Account2.Username, config.Account2.Password);
+                DatovkaResult<tDbOwnerInfo> recipientInfoResult = await recipientClient.Api.GetDataBoxInfoAsync();
+                Assert.IsTrue(recipientInfoResult.IsSuccess, "Should get recipient data box info");
+                Assert.IsNotNull(recipientInfoResult.Data, "Recipient data box info should not be null");
+                string recipientId = recipientInfoResult.Data.dbID!;
+                
+                // Send message with the PDF file
+                List<string> attachmentPaths = new List<string> { pdfFilePath };
+                tMessageCreateInput message = _client!.Api.CreateBasicDataMessage(
+                    recipientDataBoxId: recipientId,
+                    subject: $"PDF content verification test - {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
+                    attachmentPaths: attachmentPaths
+                );
+
+                DatovkaResult<tMessageCreateOutput> sendResult = await _client!.Api.SendDataMessageAsync(message);
+                Assert.IsTrue(sendResult.IsSuccess, $"Message should be sent successfully. Got: {sendResult.StatusMessage}");
+                Assert.IsNotNull(sendResult.Data.dmID, "Message ID should not be null");
+                string messageId = sendResult.Data.dmID!;
+                Console.WriteLine($"✓ Message sent! Message ID: {messageId}");
+
+                // Poll for message delivery
+                Console.WriteLine("  Polling for message delivery...");
+                tRecord? receivedMessage = null;
+                int attempts = 0;
+                int maxAttempts = 10;
+                
+                while (receivedMessage == null && attempts < maxAttempts)
+                {
+                    attempts++;
+                    await Task.Delay(1000);
+                    
+                    DatovkaListResult<tRecord> messagesResult = await recipientClient.Api.GetListOfReceivedMessagesAsync(days: 1, limit: 50);
+                    if (messagesResult is { IsSuccess: true, HasItems: true })
+                    {
+                        receivedMessage = messagesResult.Data!.FirstOrDefault(m => m.dmID == messageId);
+                    }
+                    
+                    if (receivedMessage == null)
+                    {
+                        Console.WriteLine($"  Attempt {attempts}/{maxAttempts}: Message not yet received...");
+                    }
+                }
+
+                Assert.IsNotNull(receivedMessage, $"Should find the sent message {messageId} after {maxAttempts} attempts");
+                Console.WriteLine($"✓ Message received by recipient!");
+
+                // Download attachments
+                DatovkaListResult<DataBoxAttachment> attachmentsResult = await recipientClient.Api.GetMessageAttachmentsAsync(messageId);
+                Assert.IsTrue(attachmentsResult.IsSuccess, "Should download attachments successfully");
+                Assert.IsTrue(attachmentsResult.HasItems, "Should have at least one attachment");
+                Console.WriteLine($"✓ Downloaded {attachmentsResult.Count} attachment(s)");
+
+                // Get the PDF attachment
+                DataBoxAttachment? pdfAttachment = attachmentsResult.Data!.FirstOrDefault(a => a.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase));
+                Assert.IsNotNull(pdfAttachment, "Should have a PDF attachment");
+                Assert.IsNotNull(pdfAttachment.Content, "PDF attachment content should not be null");
+                Console.WriteLine($"  PDF Attachment: {pdfAttachment.FileName}, Type: {pdfAttachment.MimeType}, Size: {pdfAttachment.Content.Length} bytes");
+
+                // Extract text from received PDF
+                string receivedText;
+                using (MemoryStream memoryStream = new MemoryStream(pdfAttachment.Content))
+                using (PdfDocument document = PdfDocument.Open(memoryStream))
+                {
+                    StringBuilder textBuilder = new StringBuilder();
+                    foreach (Page page in document.GetPages())
+                    {
+                        textBuilder.Append(page.Text);
+                    }
+                    receivedText = textBuilder.ToString().Trim();
+                }
+
+                Console.WriteLine($"Received PDF text length: {receivedText.Length} characters");
+                Console.WriteLine($"First 100 chars: {receivedText.Substring(0, Math.Min(100, receivedText.Length))}...");
+
+                // Assert content matches
+                Assert.AreEqual(originalText, receivedText, "Received PDF text content should match original PDF text");
+                Console.WriteLine($"✓ PDF Content verification PASSED!");
+                Console.WriteLine($"  Text length: {originalText.Length} characters");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Test failed with exception: {ex.Message}");
+                throw;
+            }
+        }
+
+        [Test]
+        public async Task SendMessageWithStreamAttachment_ShouldSucceed()
+        {
+            // Arrange - Create attachments from streams
+            AppConfig config = TestConfiguration.Config;
+            using DatovkaClient recipientClient = new DatovkaClient(DataBoxEnvironment.Test);
+            recipientClient.LoginWithUsernameAndPassword(config.Account2.Username, config.Account2.Password);
+            DatovkaResult<tDbOwnerInfo> recipientInfoResult = await recipientClient.Api.GetDataBoxInfoAsync();
+            Assert.IsTrue(recipientInfoResult.IsSuccess, "Should get recipient data box info");
+            Assert.IsNotNull(recipientInfoResult.Data, "Recipient data box info should not be null");
+            string recipientId = recipientInfoResult.Data.dbID!;
+
+            // Create a memory stream with some content
+            string testContent = "Test content from stream\nCreated at: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            byte[] contentBytes = Encoding.UTF8.GetBytes(testContent);
+            using MemoryStream stream = new MemoryStream(contentBytes);
+
+            // Create attachment from stream
+            DataBoxAttachment attachment = DataBoxAttachment.FromStream(stream, "test_from_stream.txt");
+            List<DataBoxAttachment> attachments = new List<DataBoxAttachment> { attachment };
+
+            // Create message using the stream-based overload
+            tMessageCreateInput message = _client!.Api.CreateBasicDataMessage(
+                recipientDataBoxId: recipientId,
+                subject: $"Stream attachment test - {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
+                attachments: attachments
+            );
+
+            // Act
+            DatovkaResult<tMessageCreateOutput> result = await _client!.Api.SendDataMessageAsync(message);
+
+            // Assert
+            Assert.IsTrue(result.IsSuccess, $"Message should be sent successfully. Got: {result.StatusMessage}");
+            Assert.IsNotNull(result.Data.dmID, "Message ID should not be null");
+            Console.WriteLine($"✓ Message with stream attachment sent! Message ID: {result.Data.dmID}");
+            Console.WriteLine($"  Attachment: {attachment.FileName}");
+        }
+
+        [Test]
         public async Task GetListOfReceivedMessages_ShouldReturnMessages()
         {
             // Act
-            var result = await _client!.Api.GetListOfReceivedMessagesAsync(days: 90, limit: 100);
+            DatovkaListResult<tRecord> result = await _client!.Api.GetListOfReceivedMessagesAsync(days: 90, limit: 100);
 
             // Assert
             Assert.IsTrue(result.IsSuccess, "Operation should succeed");
@@ -53,7 +312,7 @@ namespace DatovkaSharp.Tests
         public async Task GetListOfSentMessages_ShouldReturnMessages()
         {
             // Act
-            var result = await _client!.Api.GetListOfSentMessagesAsync(days: 90, limit: 100);
+            DatovkaListResult<tRecord> result = await _client!.Api.GetListOfSentMessagesAsync(days: 90, limit: 100);
 
             // Assert
             Assert.IsTrue(result.IsSuccess, "Operation should succeed");
@@ -73,12 +332,12 @@ namespace DatovkaSharp.Tests
         public async Task DownloadSignedReceivedMessage_ShouldReturnZFO()
         {
             // Arrange
-            var messagesResult = await _client!.Api.GetListOfReceivedMessagesAsync(days: 90, limit: 1);
+            DatovkaListResult<tRecord> messagesResult = await _client!.Api.GetListOfReceivedMessagesAsync(days: 90, limit: 1);
             Assert.IsTrue(messagesResult.HasItems, "Need at least one received message for this test");
             string? messageId = messagesResult.Data.First().dmID;
 
             // Act
-            var result = await _client!.Api.DownloadSignedReceivedMessageAsync(messageId!);
+            DatovkaResult<byte[]> result = await _client!.Api.DownloadSignedReceivedMessageAsync(messageId!);
 
             // Assert
             Assert.IsTrue(result.IsSuccess, "Operation should succeed");
@@ -92,12 +351,12 @@ namespace DatovkaSharp.Tests
         public async Task DownloadSignedSentMessage_ShouldReturnZFO()
         {
             // Arrange
-            var messagesResult = await _client!.Api.GetListOfSentMessagesAsync(days: 90, limit: 1);
+            DatovkaListResult<tRecord> messagesResult = await _client!.Api.GetListOfSentMessagesAsync(days: 90, limit: 1);
             Assert.IsTrue(messagesResult.HasItems, "Need at least one sent message for this test");
             string? messageId = messagesResult.Data.First().dmID;
 
             // Act
-            var result = await _client!.Api.DownloadSignedSentMessageAsync(messageId!);
+            DatovkaResult<byte[]> result = await _client!.Api.DownloadSignedSentMessageAsync(messageId!);
 
             // Assert
             Assert.IsTrue(result.IsSuccess, "Operation should succeed");
@@ -111,12 +370,12 @@ namespace DatovkaSharp.Tests
         public async Task GetReceivedDataMessageAttachments_ShouldReturnAttachments()
         {
             // Arrange
-            var messagesResult = await _client!.Api.GetListOfReceivedMessagesAsync(days: 90, limit: 10);
+            DatovkaListResult<tRecord> messagesResult = await _client!.Api.GetListOfReceivedMessagesAsync(days: 90, limit: 10);
             Assert.IsTrue(messagesResult.HasItems, "Need at least one received message for this test");
             string? messageId = messagesResult.Data.First().dmID;
 
             // Act
-            var result = await _client!.Api.GetReceivedDataMessageAttachmentsAsync(messageId!);
+            DatovkaListResult<DataBoxAttachment> result = await _client!.Api.GetReceivedDataMessageAttachmentsAsync(messageId!);
 
             // Assert
             Assert.IsTrue(result.IsSuccess, "Operation should succeed");
@@ -133,10 +392,10 @@ namespace DatovkaSharp.Tests
         public async Task SendMessage_WithTextContent_ShouldSucceed()
         {
             // Arrange - Get recipient's actual data box ID
-            var config = TestConfiguration.Config;
-            using var recipientClient = new DatovkaClient(DataBoxEnvironment.Test);
+            AppConfig config = TestConfiguration.Config;
+            using DatovkaClient recipientClient = new DatovkaClient(DataBoxEnvironment.Test);
             recipientClient.LoginWithUsernameAndPassword(config.Account2.Username, config.Account2.Password);
-            var recipientInfoResult = await recipientClient.Api.GetDataBoxInfoAsync();
+            DatovkaResult<tDbOwnerInfo> recipientInfoResult = await recipientClient.Api.GetDataBoxInfoAsync();
             Assert.IsTrue(recipientInfoResult.IsSuccess, "Should get recipient data box info");
             Assert.IsNotNull(recipientInfoResult.Data, "Recipient data box info should not be null");
             string recipientId = recipientInfoResult.Data.dbID!;
@@ -150,7 +409,7 @@ namespace DatovkaSharp.Tests
             try
             {
                 // Create message with minimal text attachment
-                var attachmentPaths = new List<string> { tempFilePath };
+                List<string> attachmentPaths = new List<string> { tempFilePath };
                 tMessageCreateInput message = _client!.Api.CreateBasicDataMessage(
                     recipientDataBoxId: recipientId,
                     subject: $"Test message with text content - {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
@@ -158,7 +417,7 @@ namespace DatovkaSharp.Tests
                 );
 
                 // Act
-                var result = await _client!.Api.SendDataMessageAsync(message);
+                DatovkaResult<tMessageCreateOutput> result = await _client!.Api.SendDataMessageAsync(message);
 
                 // Assert
                 Assert.IsTrue(result.IsSuccess, $"Operation should succeed. Got: {result.StatusMessage}");
@@ -187,10 +446,10 @@ namespace DatovkaSharp.Tests
         public async Task SendMessage_WithAttachment_ShouldSucceed()
         {
             // Arrange - Get recipient's actual data box ID
-            var config = TestConfiguration.Config;
-            using var recipientClient = new DatovkaClient(DataBoxEnvironment.Test);
+            AppConfig config = TestConfiguration.Config;
+            using DatovkaClient recipientClient = new DatovkaClient(DataBoxEnvironment.Test);
             recipientClient.LoginWithUsernameAndPassword(config.Account2.Username, config.Account2.Password);
-            var recipientInfoResult = await recipientClient.Api.GetDataBoxInfoAsync();
+            DatovkaResult<tDbOwnerInfo> recipientInfoResult = await recipientClient.Api.GetDataBoxInfoAsync();
             Assert.IsTrue(recipientInfoResult.IsSuccess, "Should get recipient data box info");
             Assert.IsNotNull(recipientInfoResult.Data, "Recipient data box info should not be null");
             string recipientId = recipientInfoResult.Data.dbID!;
@@ -206,7 +465,7 @@ namespace DatovkaSharp.Tests
             try
             {
                 // Create message with attachment
-                var attachmentPaths = new List<string> { tempFilePath };
+                List<string> attachmentPaths = new List<string> { tempFilePath };
                 tMessageCreateInput message = _client!.Api.CreateBasicDataMessage(
                     recipientDataBoxId: recipientId,
                     subject: $"Test message with attachment - {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
@@ -214,7 +473,7 @@ namespace DatovkaSharp.Tests
                 );
 
                 // Act
-                var result = await _client!.Api.SendDataMessageAsync(message);
+                DatovkaResult<tMessageCreateOutput> result = await _client!.Api.SendDataMessageAsync(message);
 
                 // Assert
                 Assert.IsTrue(result.IsSuccess, $"Operation should succeed. Got: {result.StatusMessage}");
@@ -243,10 +502,10 @@ namespace DatovkaSharp.Tests
         public async Task SendAndVerifyMessage_ShouldReceiveMessage()
         {
             // Arrange - Get recipient's actual data box ID
-            var config = TestConfiguration.Config;
-            using var recipientClient = new DatovkaClient(DataBoxEnvironment.Test);
+            AppConfig config = TestConfiguration.Config;
+            using DatovkaClient recipientClient = new DatovkaClient(DataBoxEnvironment.Test);
             recipientClient.LoginWithUsernameAndPassword(config.Account2.Username, config.Account2.Password);
-            var recipientInfoResult = await recipientClient.Api.GetDataBoxInfoAsync();
+            DatovkaResult<tDbOwnerInfo> recipientInfoResult = await recipientClient.Api.GetDataBoxInfoAsync();
             Assert.IsTrue(recipientInfoResult.IsSuccess, "Should get recipient data box info");
             Assert.IsNotNull(recipientInfoResult.Data, "Recipient data box info should not be null");
             string recipientId = recipientInfoResult.Data.dbID!;
@@ -262,13 +521,13 @@ namespace DatovkaSharp.Tests
             try
             {
                 // Act - Send message with minimal attachment
-                var attachmentPaths = new List<string> { tempFilePath };
+                List<string> attachmentPaths = new List<string> { tempFilePath };
                 tMessageCreateInput message = _client!.Api.CreateBasicDataMessage(
                     recipientDataBoxId: recipientId,
                     subject: testSubject,
                     attachmentPaths: attachmentPaths
                 );
-                var sendResult = await _client!.Api.SendDataMessageAsync(message);
+                DatovkaResult<tMessageCreateOutput> sendResult = await _client!.Api.SendDataMessageAsync(message);
 
                 // Assert - Check send result
                 Assert.IsTrue(sendResult.IsSuccess, $"Operation should succeed. Got: {sendResult.StatusMessage}");
@@ -287,7 +546,7 @@ namespace DatovkaSharp.Tests
                 await Task.Delay(5000);
 
                 // Check received messages
-                var receivedResult = await recipientClient.Api.GetListOfReceivedMessagesAsync(days: 1, limit: 100);
+                DatovkaListResult<tRecord> receivedResult = await recipientClient.Api.GetListOfReceivedMessagesAsync(days: 1, limit: 100);
                 Assert.IsTrue(receivedResult.IsSuccess, "Should get received messages");
                 Assert.IsNotNull(receivedResult.Data, "Received messages should not be null");
                 Console.WriteLine($"  Found {receivedResult.Count} recent message(s)");
