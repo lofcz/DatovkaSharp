@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="DatovkaSharp.Tests/DatovkaSharp.Tests.csproj" />
+  <Project Path="DatovkaSharp/DatovkaSharp.csproj" />
+</Solution>

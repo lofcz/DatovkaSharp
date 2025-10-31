@@ -3,6 +3,7 @@ using DatovkaSharp;
 using System;
 using System.IO;
 using System.Text;
+using NUnit.Framework.Legacy;
 
 namespace DatovkaSharp.Tests
 {
@@ -36,10 +37,10 @@ namespace DatovkaSharp.Tests
             DataBoxAttachment attachment = DataBoxAttachment.FromFile(_testFilePath);
 
             // Assert
-            Assert.IsNotNull(attachment, "Attachment should not be null");
-            Assert.AreEqual("datovka_test_file.txt", attachment.FileName);
-            Assert.IsTrue(attachment.Content.Length > 0, "Attachment content should not be empty");
-            Assert.IsNotNull(attachment.MimeType, "MIME type should not be null");
+            ClassicAssert.IsNotNull(attachment, "Attachment should not be null");
+            ClassicAssert.AreEqual("datovka_test_file.txt", attachment.FileName);
+            ClassicAssert.IsTrue(attachment.Content.Length > 0, "Attachment content should not be empty");
+            ClassicAssert.IsNotNull(attachment.MimeType, "MIME type should not be null");
             Console.WriteLine($"Created attachment: {attachment.FileName}, Type: {attachment.MimeType}, Size: {attachment.Content.Length} bytes");
         }
 
@@ -57,9 +58,9 @@ namespace DatovkaSharp.Tests
                 attachment.SaveToFile(outputPath);
 
                 // Assert
-                Assert.IsTrue(File.Exists(outputPath), "File should be saved");
+                ClassicAssert.IsTrue(File.Exists(outputPath), "File should be saved");
                 byte[] savedContent = File.ReadAllBytes(outputPath);
-                Assert.AreEqual(content.Length, savedContent.Length, "Saved content length should match");
+                ClassicAssert.AreEqual(content.Length, savedContent.Length, "Saved content length should match");
             }
             finally
             {
@@ -81,9 +82,9 @@ namespace DatovkaSharp.Tests
             string base64 = attachment.GetContentAsBase64();
 
             // Assert
-            Assert.IsNotNull(base64, "Base64 string should not be null");
-            Assert.IsNotEmpty(base64, "Base64 string should not be empty");
-            Assert.AreEqual(Convert.ToBase64String(content), base64);
+            ClassicAssert.IsNotNull(base64, "Base64 string should not be null");
+            ClassicAssert.IsNotEmpty(base64, "Base64 string should not be empty");
+            ClassicAssert.AreEqual(Convert.ToBase64String(content), base64);
         }
 
         [Test]
@@ -96,10 +97,10 @@ namespace DatovkaSharp.Tests
             string zfoMime = DataBoxHelper.GetMimeType("message.zfo");
 
             // Assert
-            Assert.AreEqual("application/pdf", pdfMime);
-            Assert.AreEqual("image/jpeg", jpgMime);
-            Assert.AreEqual("text/plain", txtMime);
-            Assert.AreEqual("application/vnd.software602.filler.form-xml-zip", zfoMime);
+            ClassicAssert.AreEqual("application/pdf", pdfMime);
+            ClassicAssert.AreEqual("image/jpeg", jpgMime);
+            ClassicAssert.AreEqual("text/plain", txtMime);
+            ClassicAssert.AreEqual("application/vnd.software602.filler.form-xml-zip", zfoMime);
         }
     }
 }

@@ -4,6 +4,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using DatovkaSharp.Services.Access;
+using NUnit.Framework.Legacy;
 
 namespace DatovkaSharp.Tests
 {
@@ -33,7 +34,7 @@ namespace DatovkaSharp.Tests
             bool connected = await _client!.TestConnectionAsync();
 
             // Assert
-            Assert.IsTrue(connected, "Connection to test environment should succeed");
+            ClassicAssert.IsTrue(connected, "Connection to test environment should succeed");
         }
 
         [Test]
@@ -43,9 +44,9 @@ namespace DatovkaSharp.Tests
             DatovkaResult<tDbOwnerInfo> result = await _client!.Api.GetDataBoxInfoAsync();
 
             // Assert
-            Assert.IsTrue(result.IsSuccess, "Operation should succeed");
-            Assert.IsNotNull(result.Data, "Data box info should not be null");
-            Assert.IsNotNull(result.Data.dbID, "Data box ID should not be null");
+            ClassicAssert.IsTrue(result.IsSuccess, "Operation should succeed");
+            ClassicAssert.IsNotNull(result.Data, "Data box info should not be null");
+            ClassicAssert.IsNotNull(result.Data.dbID, "Data box ID should not be null");
             Console.WriteLine($"Data Box ID: {result.Data.dbID}");
         }
 
@@ -56,9 +57,9 @@ namespace DatovkaSharp.Tests
             DatovkaResult<tDbUserInfo> result = await _client!.Api.GetUserInfoAsync();
 
             // Assert
-            Assert.IsTrue(result.IsSuccess, "Operation should succeed");
-            Assert.IsNotNull(result.Data, "User info should not be null");
-            Assert.IsNotNull(result.Data.userID, "User ID should not be null");
+            ClassicAssert.IsTrue(result.IsSuccess, "Operation should succeed");
+            ClassicAssert.IsNotNull(result.Data, "User info should not be null");
+            ClassicAssert.IsNotNull(result.Data.userID, "User ID should not be null");
             Console.WriteLine($"User ID: {result.Data.userID}");
         }
 
@@ -69,17 +70,17 @@ namespace DatovkaSharp.Tests
             DatovkaResult<DateTime?> result = await _client!.Api.GetPasswordExpiresAsync();
 
             // Assert
-            Assert.IsTrue(result.IsSuccess, "Operation should succeed");
+            ClassicAssert.IsTrue(result.IsSuccess, "Operation should succeed");
             // Note: Password expiration may be null for certificate-based accounts or accounts without expiration
             if (result.Data.HasValue)
             {
                 Console.WriteLine($"Password expires: {result.Data}");
-                Assert.That(result.Data.Value, Is.GreaterThan(DateTime.MinValue));
+                ClassicAssert.That(result.Data.Value, Is.GreaterThan(DateTime.MinValue));
             }
             else
             {
                 Console.WriteLine("Password expiration not set (certificate-based or no expiration)");
-                Assert.Pass("Password expiration is not set for this account");
+                ClassicAssert.Pass("Password expiration is not set for this account");
             }
         }
 
@@ -90,9 +91,9 @@ namespace DatovkaSharp.Tests
             DatovkaResult<string> result = await _client!.Api.GetStatsAsync();
 
             // Assert
-            Assert.IsTrue(result.IsSuccess, "Operation should succeed");
-            Assert.IsNotNull(result.Data, "Statistics should not be null");
-            Assert.IsNotEmpty(result.Data, "Statistics should not be empty");
+            ClassicAssert.IsTrue(result.IsSuccess, "Operation should succeed");
+            ClassicAssert.IsNotNull(result.Data, "Statistics should not be null");
+            ClassicAssert.IsNotEmpty(result.Data, "Statistics should not be empty");
             Console.WriteLine($"ISDS Statistics: {result.Data}");
         }
 
@@ -103,9 +104,9 @@ namespace DatovkaSharp.Tests
             var result = await _client!.Api.GetDataBoxCreditInfoAsync();
 
             // Assert
-            Assert.IsTrue(result.IsSuccess, $"Should get credit info. Got: {result.StatusMessage}");
-            Assert.IsNotNull(result.Data, "Credit info data should not be null");
-            Assert.IsNotNull(result.Data!.currentCredit, "Current credit should not be null");
+            ClassicAssert.IsTrue(result.IsSuccess, $"Should get credit info. Got: {result.StatusMessage}");
+            ClassicAssert.IsNotNull(result.Data, "Credit info data should not be null");
+            ClassicAssert.IsNotNull(result.Data!.currentCredit, "Current credit should not be null");
             
             Console.WriteLine($"✓ Current credit: {result.Data.currentCredit}");
             if (!string.IsNullOrEmpty(result.Data.notifEmail))
@@ -133,9 +134,9 @@ namespace DatovkaSharp.Tests
             );
 
             // Assert
-            Assert.IsTrue(result.IsSuccess, $"Should get credit info with date range. Got: {result.StatusMessage}");
-            Assert.IsNotNull(result.Data, "Credit info data should not be null");
-            Assert.IsNotNull(result.Data.currentCredit, "Current credit should not be null");
+            ClassicAssert.IsTrue(result.IsSuccess, $"Should get credit info with date range. Got: {result.StatusMessage}");
+            ClassicAssert.IsNotNull(result.Data, "Credit info data should not be null");
+            ClassicAssert.IsNotNull(result.Data.currentCredit, "Current credit should not be null");
             
             Console.WriteLine($"✓ Current credit: {result.Data.currentCredit}");
             Console.WriteLine($"  Date range: {fromDate:yyyy-MM-dd} to {toDate:yyyy-MM-dd}");

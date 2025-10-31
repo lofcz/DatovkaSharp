@@ -4,6 +4,7 @@ using System.Text;
 using DatovkaSharp.Exceptions;
 using DatovkaSharp.Services.Operations;
 using NUnit.Framework;
+using NUnit.Framework.Legacy;
 
 namespace DatovkaSharp.Tests
 {
@@ -44,11 +45,11 @@ namespace DatovkaSharp.Tests
                 .Build();
 
             // Assert
-            Assert.IsNotNull(message);
-            Assert.AreEqual("testbox123", message.dmEnvelope.dbIDRecipient);
-            Assert.AreEqual("Test Subject", message.dmEnvelope.dmAnnotation);
-            Assert.IsNotNull(message.dmFiles);
-            Assert.AreEqual(1, message.dmFiles.Length);
+            ClassicAssert.IsNotNull(message);
+            ClassicAssert.AreEqual("testbox123", message.dmEnvelope.dbIDRecipient);
+            ClassicAssert.AreEqual("Test Subject", message.dmEnvelope.dmAnnotation);
+            ClassicAssert.IsNotNull(message.dmFiles);
+            ClassicAssert.AreEqual(1, message.dmFiles.Length);
         }
 
         [Test]
@@ -65,9 +66,9 @@ namespace DatovkaSharp.Tests
                 .Build();
 
             // Assert
-            Assert.IsNotNull(message);
-            Assert.AreEqual(1, message.dmFiles.Length);
-            Assert.AreEqual(Path.GetFileName(_testFilePath), message.dmFiles[0].dmFileDescr);
+            ClassicAssert.IsNotNull(message);
+            ClassicAssert.AreEqual(1, message.dmFiles.Length);
+            ClassicAssert.AreEqual(Path.GetFileName(_testFilePath), message.dmFiles[0].dmFileDescr);
         }
 
         [Test]
@@ -86,8 +87,8 @@ namespace DatovkaSharp.Tests
                 .Build();
 
             // Assert
-            Assert.IsNotNull(message);
-            Assert.AreEqual(3, message.dmFiles.Length);
+            ClassicAssert.IsNotNull(message);
+            ClassicAssert.AreEqual(3, message.dmFiles.Length);
         }
 
         [Test]
@@ -97,7 +98,7 @@ namespace DatovkaSharp.Tests
             DatovkaMessageBuilder builder = new DatovkaMessageBuilder();
 
             // Act & Assert
-            MissingRequiredFieldException? ex = Assert.Throws<MissingRequiredFieldException>(() =>
+            MissingRequiredFieldException? ex = ClassicAssert.Throws<MissingRequiredFieldException>(() =>
             {
                 builder
                     .WithSubject("Test")
@@ -105,7 +106,7 @@ namespace DatovkaSharp.Tests
                     .Build();
             });
 
-            Assert.That(ex?.Message, Does.Contain("recipient"));
+            ClassicAssert.That(ex?.Message, Does.Contain("recipient"));
         }
 
         [Test]
@@ -115,7 +116,7 @@ namespace DatovkaSharp.Tests
             DatovkaMessageBuilder builder = new DatovkaMessageBuilder();
 
             // Act & Assert
-            MissingRequiredFieldException? ex = Assert.Throws<MissingRequiredFieldException>(() =>
+            MissingRequiredFieldException? ex = ClassicAssert.Throws<MissingRequiredFieldException>(() =>
             {
                 builder
                     .To("testbox123")
@@ -123,7 +124,7 @@ namespace DatovkaSharp.Tests
                     .Build();
             });
 
-            Assert.That(ex?.Message, Does.Contain("annotation"));
+            ClassicAssert.That(ex?.Message, Does.Contain("annotation"));
         }
 
         [Test]
@@ -133,7 +134,7 @@ namespace DatovkaSharp.Tests
             DatovkaMessageBuilder builder = new DatovkaMessageBuilder();
 
             // Act & Assert
-            MissingMainFileException? ex = Assert.Throws<MissingMainFileException>(() =>
+            MissingMainFileException? ex = ClassicAssert.Throws<MissingMainFileException>(() =>
             {
                 builder
                     .To("testbox123")
@@ -141,7 +142,7 @@ namespace DatovkaSharp.Tests
                     .Build();
             });
 
-            Assert.That(ex?.Message, Does.Contain("attachment"));
+            ClassicAssert.That(ex?.Message, Does.Contain("attachment"));
         }
 
         [Test]
@@ -152,7 +153,7 @@ namespace DatovkaSharp.Tests
             byte[] largeContent = new byte[MessageValidator.MaxTotalSizeBytes + 1];
 
             // Act & Assert
-            Assert.Throws<FileSizeOverflowException>(() =>
+            ClassicAssert.Throws<FileSizeOverflowException>(() =>
             {
                 builder
                     .To("testbox123")
@@ -176,7 +177,7 @@ namespace DatovkaSharp.Tests
                 .Build();
 
             // Assert
-            Assert.IsTrue(message.dmEnvelope.dmPersonalDelivery);
+            ClassicAssert.IsTrue(message.dmEnvelope.dmPersonalDelivery);
         }
 
         [Test]
@@ -191,7 +192,7 @@ namespace DatovkaSharp.Tests
             builder.AddTextContent("test.txt", content);
 
             // Assert
-            Assert.AreEqual(contentBytes.Length, builder.GetCurrentTotalSize());
+            ClassicAssert.AreEqual(contentBytes.Length, builder.GetCurrentTotalSize());
         }
 
         [Test]
@@ -205,7 +206,7 @@ namespace DatovkaSharp.Tests
             builder.AddTextContent("file2.txt", "Content 2");
 
             // Assert
-            Assert.AreEqual(2, builder.GetAttachmentCount());
+            ClassicAssert.AreEqual(2, builder.GetAttachmentCount());
         }
 
         [Test]
@@ -224,13 +225,13 @@ namespace DatovkaSharp.Tests
             tMessageCreateInput message = builder.Build();
 
             // Assert
-            Assert.IsNotNull(message);
-            Assert.AreEqual("testbox123", message.dmEnvelope.dbIDRecipient);
-            Assert.AreEqual("Fluent test", message.dmEnvelope.dmAnnotation);
-            Assert.AreEqual("SENDER001", message.dmEnvelope.dmSenderIdent);
-            Assert.AreEqual("REF123", message.dmEnvelope.dmSenderRefNumber);
-            Assert.AreEqual("REF456", message.dmEnvelope.dmRecipientRefNumber);
-            Assert.IsTrue(message.dmEnvelope.dmPersonalDelivery);
+            ClassicAssert.IsNotNull(message);
+            ClassicAssert.AreEqual("testbox123", message.dmEnvelope.dbIDRecipient);
+            ClassicAssert.AreEqual("Fluent test", message.dmEnvelope.dmAnnotation);
+            ClassicAssert.AreEqual("SENDER001", message.dmEnvelope.dmSenderIdent);
+            ClassicAssert.AreEqual("REF123", message.dmEnvelope.dmSenderRefNumber);
+            ClassicAssert.AreEqual("REF456", message.dmEnvelope.dmRecipientRefNumber);
+            ClassicAssert.IsTrue(message.dmEnvelope.dmPersonalDelivery);
         }
     }
 }
