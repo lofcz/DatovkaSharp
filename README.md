@@ -1,3 +1,6 @@
+[![Datovka](https://badgen.net/nuget/v/Datovka?v=302&icon=nuget&label=Datovka)](https://www.nuget.org/packages/Datovka)
+[![License:MIT](https://img.shields.io/badge/License-MIT-34D058.svg)](https://opensource.org/license/mit)
+
 # DatovkaSharp
 
 A `netstandard 2.0` library for communicating with the Czech Data Box (ISDS - Informační systém datových schránek).
