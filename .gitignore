@@ -1,0 +1,9 @@
+bin
+obj
+.vs
+.code
+.idea
+reference
+reference2
+DatovkaSharp/DatovkaSharp.sln.DotSettings.user
+DatovkaSharp/DatovkaSharp.Tests/appCfg.json

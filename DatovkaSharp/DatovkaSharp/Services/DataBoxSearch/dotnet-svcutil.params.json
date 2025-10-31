@@ -1,0 +1,15 @@
+{
+  "providerId": "Microsoft.Tools.ServiceModel.Svcutil",
+  "version": "8.0.0",
+  "options": {
+    "inputs": [
+      "../../Resources/db_search.wsdl"
+    ],
+    "namespaceMappings": [
+      "*, DatovkaSharp.Services.Search"
+    ],
+    "outputFile": "Reference.cs",
+    "targetFramework": "net8.0",
+    "typeReuseMode": "All"
+  }
+}

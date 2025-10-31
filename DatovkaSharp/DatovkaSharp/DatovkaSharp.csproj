@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <LangVersion>preview</LangVersion>
+        <Nullable>enable</Nullable>
+        <TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Authors>Matěj Štágl</Authors>
+        <PackageProjectUrl>https://github.com/lofcz/DatovkaSharp</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/lofcz/DatovkaSharp</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageTags>datovka,databox,czech</PackageTags>
+        <Description>.NET library for Czech DataBox "Datovka" service.</Description>
+        <PackageIcon>logo.png</PackageIcon>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <Deterministic>true</Deterministic>
+        <PackageId>Datovka</PackageId>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="System.ServiceModel.Http" Version="[4.10.3, )" />
+        <PackageReference Include="System.ServiceModel.Primitives" Version="[4.10.3, )" />
+        <PackageReference Include="System.ServiceModel.Security" Version="[4.10.3, )" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="logo.png" Pack="true" PackagePath="\" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <EmbeddedResource Include="Resources\**\*" />
+    </ItemGroup>
+
+</Project>
