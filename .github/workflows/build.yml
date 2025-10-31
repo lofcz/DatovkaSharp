@@ -27,12 +27,15 @@ jobs:
         dotnet-version: ${{ matrix.dotnet-version }}
 
     - name: Restore dependencies
+      working-directory: DatovkaSharp
       run: dotnet restore DatovkaSharp.slnx
 
     - name: Build
+      working-directory: DatovkaSharp
       run: dotnet build DatovkaSharp.slnx --no-restore
 
     - name: Test
+      working-directory: DatovkaSharp
       run: dotnet test DatovkaSharp.slnx --no-build --verbosity normal
 
     - name: Update GitHub status check
@@ -59,6 +62,7 @@ jobs:
         dotnet-version: '8.0.x'
 
     - name: Build DatovkaSharp for netstandard2.0
+      working-directory: DatovkaSharp
       run: dotnet build DatovkaSharp/ --framework netstandard2.0
 
     - name: Update GitHub status check
@@ -85,6 +89,7 @@ jobs:
         dotnet-version: '8.0.x'
 
     - name: Build DatovkaSharp for net8.0
+      working-directory: DatovkaSharp
       run: dotnet build DatovkaSharp/ --framework net8.0
 
     - name: Update GitHub status check
@@ -111,12 +116,15 @@ jobs:
         dotnet-version: '8.0.x'
 
     - name: Restore dependencies
+      working-directory: DatovkaSharp
       run: dotnet restore DatovkaSharp.slnx
 
     - name: Build
+      working-directory: DatovkaSharp
       run: dotnet build DatovkaSharp.slnx --no-restore
 
     - name: Test
+      working-directory: DatovkaSharp
       run: dotnet test DatovkaSharp.slnx --no-build --verbosity normal
 
     - name: Update GitHub status check
