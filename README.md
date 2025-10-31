@@ -1,11 +1,24 @@
+<div align="center">
+
+<img width="512" alt="Datová schránka" src="https://github.com/user-attachments/assets/58936c00-2994-47c9-97be-4404fa64c701" />
+
+# Datovka
+
+**A `netstandard 2.0` library for communicating with the Czech Data Box (ISDS - Informační systém datových schránek).**
+    
 [![Datovka](https://badgen.net/nuget/v/Datovka?v=302&icon=nuget&label=Datovka)](https://www.nuget.org/packages/Datovka)
 [![License:MIT](https://img.shields.io/badge/License-MIT-34D058.svg)](https://opensource.org/license/mit)
 
-# DatovkaSharp
+<a href="https://www.scio.cz/prace-u-nas" target="_blank">
+    <figure>
+       <img alt="Scio" width="256" src="/DatovkaSharp/scio.svg" />
+    </figure>
+</a>
 
-A `netstandard 2.0` library for communicating with the Czech Data Box (ISDS - Informační systém datových schránek).
+_Sponsored by Scio_
+</div>
 
-## Features
+## ✨ Features
 
 - Full support for Czech Data Box API (v3.0.9)
 - Username/Password and Certificate authentication
@@ -16,7 +29,7 @@ A `netstandard 2.0` library for communicating with the Czech Data Box (ISDS - In
 - Password management (change password, get password info)
 - Mark messages as read
 
-## Installation
+## ⚡ Installation
 
 ### NuGet
 ```bash
@@ -30,7 +43,7 @@ cd DatovkaSharp
 dotnet build
 ```
 
-## Quick Start
+## 🪄 Quick Start
 
 ### Authentication with Username and Password
 
