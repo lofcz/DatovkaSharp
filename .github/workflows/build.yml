@@ -26,6 +26,23 @@ jobs:
       with:
         dotnet-version: ${{ matrix.dotnet-version }}
 
+    - name: Create test configuration
+      working-directory: DatovkaSharp/DatovkaSharp.Tests
+      shell: bash
+      run: |
+        cat > appCfg.json << 'EOF'
+        {
+          "Account1": {
+            "Username": "${{ secrets.DATOVKA_TEST_ACCOUNT1_USERNAME }}",
+            "Password": "${{ secrets.DATOVKA_TEST_ACCOUNT1_PASSWORD }}"
+          },
+          "Account2": {
+            "Username": "${{ secrets.DATOVKA_TEST_ACCOUNT2_USERNAME }}",
+            "Password": "${{ secrets.DATOVKA_TEST_ACCOUNT2_PASSWORD }}"
+          }
+        }
+        EOF
+
     - name: Restore dependencies
       working-directory: DatovkaSharp
       run: dotnet restore DatovkaSharp.slnx
@@ -114,6 +131,23 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
+
+    - name: Create test configuration
+      working-directory: DatovkaSharp/DatovkaSharp.Tests
+      shell: bash
+      run: |
+        cat > appCfg.json << 'EOF'
+        {
+          "Account1": {
+            "Username": "${{ secrets.DATOVKA_TEST_ACCOUNT1_USERNAME }}",
+            "Password": "${{ secrets.DATOVKA_TEST_ACCOUNT1_PASSWORD }}"
+          },
+          "Account2": {
+            "Username": "${{ secrets.DATOVKA_TEST_ACCOUNT2_USERNAME }}",
+            "Password": "${{ secrets.DATOVKA_TEST_ACCOUNT2_PASSWORD }}"
+          }
+        }
+        EOF
 
     - name: Restore dependencies
       working-directory: DatovkaSharp
