@@ -6,6 +6,13 @@
   "account2": {
     "username": "",
     "password": ""
+  },
+  "certificates": {
+    "ssCertificatePath": "Certificates/ss_certificate.pfx",
+    "ssCertificatePassword": "",
+    "hssCertificatePath": "Certificates/hss_certificate.pfx",
+    "hssCertificatePassword": "",
+    "hssDataBoxId": ""
   }
 }
 

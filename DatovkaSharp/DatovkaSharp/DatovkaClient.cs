@@ -22,7 +22,10 @@ namespace DatovkaSharp
         private string? _username;
         private string? _password;
         private string? _certificatePath;
+        private byte[]? _certificateBytes;
         private bool _useCertificate;
+        private CertificateAuthenticationMode _certAuthMode;
+        private string? _dataBoxId;
         
         private DataBoxAccessPortTypeClient? _accessClient;
         private DataBoxSearchPortTypeClient? _searchClient;
@@ -57,13 +60,93 @@ namespace DatovkaSharp
         }
 
         /// <summary>
-        /// Login with certificate
+        /// Login with certificate from file (SS - Spisová služba mode)
         /// </summary>
         public void LoginWithCertificate(string certificatePath, string? password = null)
         {
-            _certificatePath = certificatePath ?? throw new ArgumentNullException(nameof(certificatePath));
+            if (string.IsNullOrEmpty(certificatePath))
+                throw new ArgumentNullException(nameof(certificatePath));
+            
+            if (!System.IO.File.Exists(certificatePath))
+                throw new System.IO.FileNotFoundException($"Certificate file not found: {certificatePath}", certificatePath);
+            
+            _certificatePath = certificatePath;
             _password = password;
             _useCertificate = true;
+            _certAuthMode = CertificateAuthenticationMode.FilingService;
+        }
+
+        /// <summary>
+        /// Login with certificate from byte array (SS - Spisová služba mode)
+        /// </summary>
+        public void LoginWithCertificate(byte[] certificateBytes, string? password = null)
+        {
+            _certificateBytes = certificateBytes ?? throw new ArgumentNullException(nameof(certificateBytes));
+            _password = password;
+            _useCertificate = true;
+            _certAuthMode = CertificateAuthenticationMode.FilingService;
+        }
+
+        /// <summary>
+        /// Login with certificate from stream (SS - Spisová služba mode)
+        /// </summary>
+        public void LoginWithCertificate(System.IO.Stream certificateStream, string? password = null)
+        {
+            if (certificateStream == null)
+                throw new ArgumentNullException(nameof(certificateStream));
+            
+            using var ms = new System.IO.MemoryStream();
+            certificateStream.CopyTo(ms);
+            LoginWithCertificate(ms.ToArray(), password);
+        }
+
+        /// <summary>
+        /// Login with certificate and DataBox ID (HSS - Hostovaná spisová služba mode) from file.
+        /// Used by external applications to access specific databoxes.
+        /// </summary>
+        public void LoginWithCertificateAndDataBoxId(string certificatePath, string dataBoxId, string? password = null)
+        {
+            if (string.IsNullOrEmpty(certificatePath))
+                throw new ArgumentNullException(nameof(certificatePath));
+            
+            if (!System.IO.File.Exists(certificatePath))
+                throw new System.IO.FileNotFoundException($"Certificate file not found: {certificatePath}", certificatePath);
+            
+            if (string.IsNullOrEmpty(dataBoxId))
+                throw new ArgumentNullException(nameof(dataBoxId));
+            
+            _certificatePath = certificatePath;
+            _dataBoxId = dataBoxId;
+            _password = password;
+            _useCertificate = true;
+            _certAuthMode = CertificateAuthenticationMode.HostedFilingService;
+        }
+
+        /// <summary>
+        /// Login with certificate and DataBox ID (HSS - Hostovaná spisová služba mode) from byte array.
+        /// Used by external applications to access specific databoxes.
+        /// </summary>
+        public void LoginWithCertificateAndDataBoxId(byte[] certificateBytes, string dataBoxId, string? password = null)
+        {
+            _certificateBytes = certificateBytes ?? throw new ArgumentNullException(nameof(certificateBytes));
+            _dataBoxId = dataBoxId ?? throw new ArgumentNullException(nameof(dataBoxId));
+            _password = password;
+            _useCertificate = true;
+            _certAuthMode = CertificateAuthenticationMode.HostedFilingService;
+        }
+
+        /// <summary>
+        /// Login with certificate and DataBox ID (HSS - Hostovaná spisová služba mode) from stream.
+        /// Used by external applications to access specific databoxes.
+        /// </summary>
+        public void LoginWithCertificateAndDataBoxId(System.IO.Stream certificateStream, string dataBoxId, string? password = null)
+        {
+            if (certificateStream == null)
+                throw new ArgumentNullException(nameof(certificateStream));
+            
+            using var ms = new System.IO.MemoryStream();
+            certificateStream.CopyTo(ms);
+            LoginWithCertificateAndDataBoxId(ms.ToArray(), dataBoxId, password);
         }
 
         /// <summary>
@@ -187,10 +270,12 @@ namespace DatovkaSharp
                 ? ".czebox.cz/" 
                 : ".mojedatovaschranka.cz/";
 
-            // Certificate path
+            // Certificate path - depends on authentication mode
             if (_useCertificate)
             {
-                baseUrl += "cert/";
+                baseUrl += _certAuthMode == CertificateAuthenticationMode.HostedFilingService 
+                    ? "hspis/" 
+                    : "cert/";
             }
 
             baseUrl += "DS/";
@@ -237,14 +322,36 @@ namespace DatovkaSharp
         {
             if (_useCertificate)
             {
-                // Certificate authentication
-                if (!string.IsNullOrEmpty(_certificatePath))
+                // Load certificate
+                X509Certificate2 cert;
+                if (_certificateBytes != null)
                 {
-                    X509Certificate2 cert = new X509Certificate2(
-                        _certificatePath ?? string.Empty, 
-                        _password);
+                    // From byte array
+                    cert = string.IsNullOrEmpty(_password)
+                        ? new X509Certificate2(_certificateBytes)
+                        : new X509Certificate2(_certificateBytes, _password);
+                }
+                else if (!string.IsNullOrEmpty(_certificatePath))
+                {
+                    // From file
+                    cert = string.IsNullOrEmpty(_password)
+                        ? new X509Certificate2(_certificatePath)
+                        : new X509Certificate2(_certificatePath, _password);
+                }
+                else
+                {
+                    throw new DataBoxException("Certificate path or bytes must be provided");
+                }
+                
+                if (credentials != null)
+                {
+                    credentials.ClientCertificate.Certificate = cert;
                     
-                    credentials?.ClientCertificate.Certificate = cert;
+                    // HSS mode requires DataBox ID in username
+                    if (_certAuthMode == CertificateAuthenticationMode.HostedFilingService)
+                    {
+                        credentials.UserName.UserName = _dataBoxId;
+                    }
                 }
             }
             else

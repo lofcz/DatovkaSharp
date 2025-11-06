@@ -7,3 +7,11 @@ reference
 reference2
 DatovkaSharp/DatovkaSharp.sln.DotSettings.user
 DatovkaSharp/DatovkaSharp.Tests/appCfg.json
+# Certificate files
+*.pfx
+*.p12
+*.cer
+*.crt
+*.key
+DatovkaSharp/DatovkaSharp.Tests/Certificates/*
+!DatovkaSharp/DatovkaSharp.Tests/Certificates/README.md

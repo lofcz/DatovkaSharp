@@ -21,7 +21,11 @@ _Sponsored by Scio_
 ## ✨ Features
 
 - Full support for Czech Data Box API ([v3.0.9](https://info.mojedatovaschranka.cz/info/files/2224_Info_pro_vyvojare_2025_9.pdf))
-- Username/Password and Certificate authentication
+- Multiple authentication methods:
+  - Username/Password
+  - Certificate-based (Spisová služba - SS mode)
+  - Certificate + DataBox ID (Hostovaná spisová služba - HSS mode)
+  - Support for certificates from file, byte array, or stream
 - Test and Production environment support
 - Send and receive messages with attachments
 - Download signed messages (ZFO format)
@@ -62,10 +66,46 @@ var api = client.Api;
 
 ### Authentication with Certificate
 
+DatovkaSharp supports two certificate-based authentication modes for system integration:
+
+#### Spisová služba (Filing Service - SS mode)
+System certificate authentication without username:
+
 ```csharp
 var client = new DatovkaClient(DataBoxEnvironment.Production);
+
+// From file
 client.LoginWithCertificate("path/to/certificate.pfx", "certificate-password");
+
+// From byte array
+byte[] certBytes = File.ReadAllBytes("certificate.pfx");
+client.LoginWithCertificate(certBytes, "certificate-password");
+
+// From stream
+using var stream = File.OpenRead("certificate.pfx");
+client.LoginWithCertificate(stream, "certificate-password");
 ```
+
+#### Hostovaná spisová služba (Hosted Filing Service - HSS mode)
+System certificate + DataBox ID authentication for external applications:
+
+```csharp
+var client = new DatovkaClient(DataBoxEnvironment.Production);
+string dataBoxId = "abc123"; // Target data box ID
+
+// From file
+client.LoginWithCertificateAndDataBoxId("path/to/certificate.pfx", dataBoxId, "certificate-password");
+
+// From byte array
+byte[] certBytes = File.ReadAllBytes("certificate.pfx");
+client.LoginWithCertificateAndDataBoxId(certBytes, dataBoxId, "certificate-password");
+
+// From stream
+using var stream = File.OpenRead("certificate.pfx");
+client.LoginWithCertificateAndDataBoxId(stream, dataBoxId, "certificate-password");
+```
+
+**Note**: HSS mode is designed for external applications (like hosted filing systems) that need to access specific data boxes on behalf of their owners.
 
 ## Result Wrapper
 

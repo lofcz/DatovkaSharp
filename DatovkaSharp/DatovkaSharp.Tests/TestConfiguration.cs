@@ -10,10 +10,20 @@ namespace DatovkaSharp.Tests
         public string Password { get; set; } = string.Empty;
     }
 
+    public class CertificateConfig
+    {
+        public string? SSCertificatePath { get; set; }
+        public string? SSCertificatePassword { get; set; }
+        public string? HSSCertificatePath { get; set; }
+        public string? HSSCertificatePassword { get; set; }
+        public string? HSSDataBoxId { get; set; }
+    }
+
     public class AppConfig
     {
         public TestAccount Account1 { get; set; } = new TestAccount();
         public TestAccount Account2 { get; set; } = new TestAccount();
+        public CertificateConfig? Certificates { get; set; }
     }
 
     public static class TestConfiguration
