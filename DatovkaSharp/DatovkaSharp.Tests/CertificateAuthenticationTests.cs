@@ -3,6 +3,7 @@ using NUnit.Framework.Legacy;
 using DatovkaSharp;
 using System;
 using System.IO;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
 namespace DatovkaSharp.Tests
@@ -49,6 +50,43 @@ namespace DatovkaSharp.Tests
             {
                 _client.LoginWithCertificateAndDataBoxId("non_existent_certificate.pfx", "abc123", "password");
             });
+        }
+
+        [Test]
+        public void LoginWithCertificate_WithX509Certificate2_ShouldSucceed()
+        {
+            // Arrange
+            _client = new DatovkaClient(DataBoxEnvironment.Test);
+            // Create a minimal certificate for testing the method signature (would fail on actual connection)
+#pragma warning disable SYSLIB0026 // X509Certificate2() is obsolete
+            var cert = new X509Certificate2();
+#pragma warning restore SYSLIB0026
+
+            // Act - this will succeed in setting up, actual connection test would fail with invalid cert
+            Assert.DoesNotThrow(() =>
+            {
+                _client.LoginWithCertificate(cert);
+            });
+
+            Console.WriteLine("✓ Certificate object login method succeeded");
+        }
+
+        [Test]
+        public void LoginWithCertificateAndDataBoxId_WithX509Certificate2_ShouldSucceed()
+        {
+            // Arrange
+            _client = new DatovkaClient(DataBoxEnvironment.Test);
+#pragma warning disable SYSLIB0026 // X509Certificate2() is obsolete
+            var cert = new X509Certificate2();
+#pragma warning restore SYSLIB0026
+
+            // Act
+            Assert.DoesNotThrow(() =>
+            {
+                _client.LoginWithCertificateAndDataBoxId(cert, "testbox123");
+            });
+
+            Console.WriteLine("✓ Certificate object with DataBox ID login method succeeded");
         }
 
         [Test]
@@ -187,6 +225,39 @@ namespace DatovkaSharp.Tests
         }
 
         [Test]
+        public async Task LoginWithCertificate_SS_Mode_WithX509Certificate2()
+        {
+            // Skip if no certificate is configured
+            if (_certConfig == null || 
+                string.IsNullOrEmpty(_certConfig.SSCertificatePath) || 
+                !File.Exists(_certConfig.SSCertificatePath))
+            {
+                Assert.Ignore("SS certificate not configured or not found. Place your SS certificate at the configured path to run this test.");
+                return;
+            }
+
+            // Arrange
+            _client = new DatovkaClient(DataBoxEnvironment.Test);
+            
+            // Load certificate as X509Certificate2
+            var cert = string.IsNullOrEmpty(_certConfig.SSCertificatePassword)
+                ? new X509Certificate2(_certConfig.SSCertificatePath)
+                : new X509Certificate2(_certConfig.SSCertificatePath, _certConfig.SSCertificatePassword);
+            
+            Console.WriteLine($"Testing SS mode with X509Certificate2 object");
+
+            // Act
+            _client.LoginWithCertificate(cert);
+
+            // Try to connect
+            var connected = await _client.TestConnectionAsync();
+
+            // Assert
+            ClassicAssert.IsTrue(connected, "Connection with SS certificate as X509Certificate2 should succeed");
+            Console.WriteLine("✓ SS mode authentication with X509Certificate2 successful");
+        }
+
+        [Test]
         public async Task LoginWithCertificateAndDataBoxId_HSS_Mode_WithRealCertificate()
         {
             // Skip if no certificate is configured
@@ -293,6 +364,41 @@ namespace DatovkaSharp.Tests
             // Assert
             ClassicAssert.IsTrue(connected, "Connection with HSS certificate from stream should succeed");
             Console.WriteLine("✓ HSS mode authentication from stream successful");
+        }
+
+        [Test]
+        public async Task LoginWithCertificateAndDataBoxId_HSS_Mode_WithX509Certificate2()
+        {
+            // Skip if no certificate is configured
+            if (_certConfig == null || 
+                string.IsNullOrEmpty(_certConfig.HSSCertificatePath) || 
+                !File.Exists(_certConfig.HSSCertificatePath) ||
+                string.IsNullOrEmpty(_certConfig.HSSDataBoxId))
+            {
+                Assert.Ignore("HSS certificate or DataBox ID not configured. Configure HSS certificate path and target DataBox ID to run this test.");
+                return;
+            }
+
+            // Arrange
+            _client = new DatovkaClient(DataBoxEnvironment.Test);
+            
+            // Load certificate as X509Certificate2
+            var cert = string.IsNullOrEmpty(_certConfig.HSSCertificatePassword)
+                ? new X509Certificate2(_certConfig.HSSCertificatePath)
+                : new X509Certificate2(_certConfig.HSSCertificatePath, _certConfig.HSSCertificatePassword);
+            
+            Console.WriteLine($"Testing HSS mode with X509Certificate2 object");
+            Console.WriteLine($"Target DataBox ID: {_certConfig.HSSDataBoxId}");
+
+            // Act
+            _client.LoginWithCertificateAndDataBoxId(cert, _certConfig.HSSDataBoxId);
+
+            // Try to connect
+            var connected = await _client.TestConnectionAsync();
+
+            // Assert
+            ClassicAssert.IsTrue(connected, "Connection with HSS certificate as X509Certificate2 should succeed");
+            Console.WriteLine("✓ HSS mode authentication with X509Certificate2 successful");
         }
     }
 }

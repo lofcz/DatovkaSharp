@@ -23,6 +23,7 @@ namespace DatovkaSharp
         private string? _password;
         private string? _certificatePath;
         private byte[]? _certificateBytes;
+        private X509Certificate2? _certificate;
         private bool _useCertificate;
         private CertificateAuthenticationMode _certAuthMode;
         private string? _dataBoxId;
@@ -101,6 +102,16 @@ namespace DatovkaSharp
         }
 
         /// <summary>
+        /// Login with X509Certificate2 object directly (SS - Spisová služba mode)
+        /// </summary>
+        public void LoginWithCertificate(X509Certificate2 certificate)
+        {
+            _certificate = certificate ?? throw new ArgumentNullException(nameof(certificate));
+            _useCertificate = true;
+            _certAuthMode = CertificateAuthenticationMode.FilingService;
+        }
+
+        /// <summary>
         /// Login with certificate and DataBox ID (HSS - Hostovaná spisová služba mode) from file.
         /// Used by external applications to access specific databoxes.
         /// </summary>
@@ -147,6 +158,18 @@ namespace DatovkaSharp
             using var ms = new System.IO.MemoryStream();
             certificateStream.CopyTo(ms);
             LoginWithCertificateAndDataBoxId(ms.ToArray(), dataBoxId, password);
+        }
+
+        /// <summary>
+        /// Login with X509Certificate2 object directly and DataBox ID (HSS - Hostovaná spisová služba mode).
+        /// Used by external applications to access specific databoxes.
+        /// </summary>
+        public void LoginWithCertificateAndDataBoxId(X509Certificate2 certificate, string dataBoxId)
+        {
+            _certificate = certificate ?? throw new ArgumentNullException(nameof(certificate));
+            _dataBoxId = dataBoxId ?? throw new ArgumentNullException(nameof(dataBoxId));
+            _useCertificate = true;
+            _certAuthMode = CertificateAuthenticationMode.HostedFilingService;
         }
 
         /// <summary>
@@ -324,7 +347,12 @@ namespace DatovkaSharp
             {
                 // Load certificate
                 X509Certificate2 cert;
-                if (_certificateBytes != null)
+                if (_certificate != null)
+                {
+                    // Use provided certificate object directly
+                    cert = _certificate;
+                }
+                else if (_certificateBytes != null)
                 {
                     // From byte array
                     cert = string.IsNullOrEmpty(_password)
@@ -340,7 +368,7 @@ namespace DatovkaSharp
                 }
                 else
                 {
-                    throw new DataBoxException("Certificate path or bytes must be provided");
+                    throw new DataBoxException("Certificate object, path, or bytes must be provided");
                 }
                 
                 if (credentials != null)
