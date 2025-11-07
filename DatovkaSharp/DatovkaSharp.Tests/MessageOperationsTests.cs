@@ -40,7 +40,7 @@ namespace DatovkaSharp.Tests
             // Arrange - Create a text file with known content (UTF-8 without BOM)
             string originalText = "Hello from DatovkaSharp!\nThis is a test message.\nLine 3 with special chars: čřžýáíé";
             string tempFilePath = Path.Combine(Path.GetTempPath(), $"test_content_{DateTime.Now:yyyyMMddHHmmss}.txt");
-            File.WriteAllText(tempFilePath, originalText, new UTF8Encoding(false)); // UTF-8 without BOM
+            await File.WriteAllTextAsync(tempFilePath, originalText, new UTF8Encoding(false)); // UTF-8 without BOM
 
             try
             {
@@ -405,7 +405,7 @@ namespace DatovkaSharp.Tests
             // Create a minimal text file (Czech Data Box requires at least one attachment)
             string tempFilePath = Path.Combine(Path.GetTempPath(), $"message_content_{DateTime.Now:yyyyMMddHHmmss}.txt");
             string fileContent = $"Test message content\nSent at: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
-            File.WriteAllText(tempFilePath, fileContent, Encoding.UTF8);
+            await File.WriteAllTextAsync(tempFilePath, fileContent, Encoding.UTF8);
 
             try
             {
@@ -461,7 +461,7 @@ namespace DatovkaSharp.Tests
             string fileContent = $"This is a test attachment created at {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n" +
                                "DatovkaSharp library test message.\n" +
                                "This message was sent to test attachment functionality.";
-            File.WriteAllText(tempFilePath, fileContent, Encoding.UTF8);
+            await File.WriteAllTextAsync(tempFilePath, fileContent, Encoding.UTF8);
 
             try
             {
@@ -517,7 +517,7 @@ namespace DatovkaSharp.Tests
             // Create a minimal text file (Czech Data Box requires at least one attachment)
             string tempFilePath = Path.Combine(Path.GetTempPath(), $"verify_content_{DateTime.Now:yyyyMMddHHmmss}.txt");
             string fileContent = $"Test verification message\nSent at: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
-            File.WriteAllText(tempFilePath, fileContent, Encoding.UTF8);
+            await File.WriteAllTextAsync(tempFilePath, fileContent, Encoding.UTF8);
 
             try
             {

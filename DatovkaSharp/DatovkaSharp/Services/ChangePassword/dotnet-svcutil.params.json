@@ -1,0 +1,15 @@
+{
+  "providerId": "Microsoft.Tools.ServiceModel.Svcutil",
+  "version": "8.0.0",
+  "options": {
+    "inputs": [
+      "../../Resources/ChangePassword.wsdl"
+    ],
+    "namespaceMappings": [
+      "*, DatovkaSharp.Services.ChangePassword"
+    ],
+    "outputFile": "Reference.cs",
+    "targetFramework": "net8.0"
+  }
+}
+

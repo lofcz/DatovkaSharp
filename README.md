@@ -25,13 +25,18 @@ _Sponsored by Scio_
   - Username/Password
   - Certificate-based (Spisová služba - SS mode)
   - Certificate + DataBox ID (Hostovaná spisová služba - HSS mode)
-  - Support for certificates from file, byte array, or stream
+  - Support for certificates from file, byte array, stream, or X509Certificate2 object
+  - Customizable X509 key storage flags
 - Test and Production environment support
 - Send and receive messages with attachments
 - Download signed messages (ZFO format)
 - Search for data boxes
-- Password management (change password, get password info)
+- Password management (OTP-based password change, get password info)
 - Mark messages as read
+- Message archiving (ArchiveISDSDocument)
+- DataBox administration (create, delete, update databoxes and users)
+- Draft/concept management (ExtIS2 integration)
+- Credit information and usage tracking
 
 ## ⚡ Installation
 
@@ -106,6 +111,74 @@ client.LoginWithCertificateAndDataBoxId(stream, dataBoxId, "certificate-password
 ```
 
 **Note**: HSS mode is designed for external applications (like hosted filing systems) that need to access specific data boxes on behalf of their owners.
+
+#### Advanced: Customizing Certificate Storage Flags
+
+By default, certificates are loaded with `MachineKeySet | PersistKeySet | Exportable` flags. You can customize these:
+
+```csharp
+// Custom storage flags for specific security requirements
+var customFlags = X509KeyStorageFlags.UserKeySet | X509KeyStorageFlags.Exportable;
+client.LoginWithCertificate("path/to/cert.pfx", "password", customFlags);
+
+// Also works with HSS mode
+client.LoginWithCertificateAndDataBoxId("path/to/cert.pfx", dataBoxId, "password", customFlags);
+```
+
+#### Using X509Certificate2 Objects Directly
+
+You can also provide a pre-loaded certificate object:
+
+```csharp
+// Load certificate with custom flags
+var cert = new X509Certificate2("path/to/cert.pfx", "password", 
+    X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.PersistKeySet);
+
+// SS mode
+client.LoginWithCertificate(cert);
+
+// HSS mode
+client.LoginWithCertificateAndDataBoxId(cert, dataBoxId);
+```
+
+### Certificate Conversion with OpenSSL
+
+When working with certificates, you may need to convert between formats. Here are common scenarios:
+
+#### 1. Convert DER Certificate to PEM (for Data Box UI Import)
+
+If you have a DER-encoded certificate and need to import it into the Data Box web interface:
+
+```bash
+openssl x509 -inform DER -in your_certificate.crt -out certificate.pem
+```
+
+This converts a binary DER certificate to text-based PEM format that can be imported in the Data Box settings.
+
+#### 2. Create PFX/P12 with Private Key (for HSS Authentication)
+
+If you have a certificate request generated via iSignum or similar tool and received the certificate, you need to combine it with your private key:
+
+```bash
+openssl pkcs12 -export -out certificate_with_key.pfx -inkey your_private_key.pem -in your_certificate.crt
+```
+
+Where:
+- `your_private_key.pem` is the private key you generated when creating the certificate request
+- `your_certificate.crt` is the certificate you received (can be DER or PEM format)
+- `certificate_with_key.pfx` is the output file you'll use for authentication
+
+**Important**: The resulting PFX file contains both the certificate and the private key, which is required for HSS mode authentication. The library will validate that the certificate has a private key and throw a helpful error if it's missing.
+
+#### 3. Verify Certificate Has Private Key
+
+To verify your PFX certificate contains a private key:
+
+```bash
+openssl pkcs12 -info -in certificate.pfx
+```
+
+You should see `-----BEGIN PRIVATE KEY-----` or `-----BEGIN ENCRYPTED PRIVATE KEY-----` in the output.
 
 ## Result Wrapper
 

@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Security.Cryptography.X509Certificates;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
@@ -18,6 +19,13 @@ namespace DatovkaSharp
     /// </summary>
     public class DatovkaClient : IDisposable
     {
+        /// <summary>
+        /// Default X509 certificate storage flags used for loading certificates.
+        /// These flags ensure the private key is accessible for TLS authentication.
+        /// </summary>
+        public static readonly X509KeyStorageFlags DefaultCertificateStorageFlags = 
+            X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.Exportable;
+        
         private readonly DataBoxEnvironment _environment;
         private string? _username;
         private string? _password;
@@ -27,6 +35,7 @@ namespace DatovkaSharp
         private bool _useCertificate;
         private CertificateAuthenticationMode _certAuthMode;
         private string? _dataBoxId;
+        private X509KeyStorageFlags _certificateStorageFlags;
         
         private DataBoxAccessPortTypeClient? _accessClient;
         private DataBoxSearchPortTypeClient? _searchClient;
@@ -63,16 +72,20 @@ namespace DatovkaSharp
         /// <summary>
         /// Login with certificate from file (SS - Spisová služba mode)
         /// </summary>
-        public void LoginWithCertificate(string certificatePath, string? password = null)
+        /// <param name="certificatePath">Path to the certificate file (PFX/P12)</param>
+        /// <param name="password">Optional password for the certificate</param>
+        /// <param name="storageFlags">Optional X509 storage flags (defaults to MachineKeySet | PersistKeySet | Exportable)</param>
+        public void LoginWithCertificate(string certificatePath, string? password = null, X509KeyStorageFlags? storageFlags = null)
         {
             if (string.IsNullOrEmpty(certificatePath))
                 throw new ArgumentNullException(nameof(certificatePath));
             
-            if (!System.IO.File.Exists(certificatePath))
-                throw new System.IO.FileNotFoundException($"Certificate file not found: {certificatePath}", certificatePath);
+            if (!File.Exists(certificatePath))
+                throw new FileNotFoundException($"Certificate file not found: {certificatePath}", certificatePath);
             
             _certificatePath = certificatePath;
             _password = password;
+            _certificateStorageFlags = storageFlags ?? DefaultCertificateStorageFlags;
             _useCertificate = true;
             _certAuthMode = CertificateAuthenticationMode.FilingService;
         }
@@ -80,10 +93,14 @@ namespace DatovkaSharp
         /// <summary>
         /// Login with certificate from byte array (SS - Spisová služba mode)
         /// </summary>
-        public void LoginWithCertificate(byte[] certificateBytes, string? password = null)
+        /// <param name="certificateBytes">Certificate bytes (PFX/P12 format)</param>
+        /// <param name="password">Optional password for the certificate</param>
+        /// <param name="storageFlags">Optional X509 storage flags (defaults to MachineKeySet | PersistKeySet | Exportable)</param>
+        public void LoginWithCertificate(byte[] certificateBytes, string? password = null, X509KeyStorageFlags? storageFlags = null)
         {
             _certificateBytes = certificateBytes ?? throw new ArgumentNullException(nameof(certificateBytes));
             _password = password;
+            _certificateStorageFlags = storageFlags ?? DefaultCertificateStorageFlags;
             _useCertificate = true;
             _certAuthMode = CertificateAuthenticationMode.FilingService;
         }
@@ -91,14 +108,17 @@ namespace DatovkaSharp
         /// <summary>
         /// Login with certificate from stream (SS - Spisová služba mode)
         /// </summary>
-        public void LoginWithCertificate(System.IO.Stream certificateStream, string? password = null)
+        /// <param name="certificateStream">Stream containing certificate data (PFX/P12 format)</param>
+        /// <param name="password">Optional password for the certificate</param>
+        /// <param name="storageFlags">Optional X509 storage flags (defaults to MachineKeySet | PersistKeySet | Exportable)</param>
+        public void LoginWithCertificate(Stream certificateStream, string? password = null, X509KeyStorageFlags? storageFlags = null)
         {
             if (certificateStream == null)
                 throw new ArgumentNullException(nameof(certificateStream));
             
-            using var ms = new System.IO.MemoryStream();
+            using MemoryStream ms = new MemoryStream();
             certificateStream.CopyTo(ms);
-            LoginWithCertificate(ms.ToArray(), password);
+            LoginWithCertificate(ms.ToArray(), password, storageFlags);
         }
 
         /// <summary>
@@ -115,13 +135,17 @@ namespace DatovkaSharp
         /// Login with certificate and DataBox ID (HSS - Hostovaná spisová služba mode) from file.
         /// Used by external applications to access specific databoxes.
         /// </summary>
-        public void LoginWithCertificateAndDataBoxId(string certificatePath, string dataBoxId, string? password = null)
+        /// <param name="certificatePath">Path to the certificate file (PFX/P12)</param>
+        /// <param name="dataBoxId">Target DataBox ID to access</param>
+        /// <param name="password">Optional password for the certificate</param>
+        /// <param name="storageFlags">Optional X509 storage flags (defaults to MachineKeySet | PersistKeySet | Exportable)</param>
+        public void LoginWithCertificateAndDataBoxId(string certificatePath, string dataBoxId, string? password = null, X509KeyStorageFlags? storageFlags = null)
         {
             if (string.IsNullOrEmpty(certificatePath))
                 throw new ArgumentNullException(nameof(certificatePath));
             
-            if (!System.IO.File.Exists(certificatePath))
-                throw new System.IO.FileNotFoundException($"Certificate file not found: {certificatePath}", certificatePath);
+            if (!File.Exists(certificatePath))
+                throw new FileNotFoundException($"Certificate file not found: {certificatePath}", certificatePath);
             
             if (string.IsNullOrEmpty(dataBoxId))
                 throw new ArgumentNullException(nameof(dataBoxId));
@@ -129,6 +153,7 @@ namespace DatovkaSharp
             _certificatePath = certificatePath;
             _dataBoxId = dataBoxId;
             _password = password;
+            _certificateStorageFlags = storageFlags ?? DefaultCertificateStorageFlags;
             _useCertificate = true;
             _certAuthMode = CertificateAuthenticationMode.HostedFilingService;
         }
@@ -137,11 +162,16 @@ namespace DatovkaSharp
         /// Login with certificate and DataBox ID (HSS - Hostovaná spisová služba mode) from byte array.
         /// Used by external applications to access specific databoxes.
         /// </summary>
-        public void LoginWithCertificateAndDataBoxId(byte[] certificateBytes, string dataBoxId, string? password = null)
+        /// <param name="certificateBytes">Certificate bytes (PFX/P12 format)</param>
+        /// <param name="dataBoxId">Target DataBox ID to access</param>
+        /// <param name="password">Optional password for the certificate</param>
+        /// <param name="storageFlags">Optional X509 storage flags (defaults to MachineKeySet | PersistKeySet | Exportable)</param>
+        public void LoginWithCertificateAndDataBoxId(byte[] certificateBytes, string dataBoxId, string? password = null, X509KeyStorageFlags? storageFlags = null)
         {
             _certificateBytes = certificateBytes ?? throw new ArgumentNullException(nameof(certificateBytes));
             _dataBoxId = dataBoxId ?? throw new ArgumentNullException(nameof(dataBoxId));
             _password = password;
+            _certificateStorageFlags = storageFlags ?? DefaultCertificateStorageFlags;
             _useCertificate = true;
             _certAuthMode = CertificateAuthenticationMode.HostedFilingService;
         }
@@ -150,14 +180,18 @@ namespace DatovkaSharp
         /// Login with certificate and DataBox ID (HSS - Hostovaná spisová služba mode) from stream.
         /// Used by external applications to access specific databoxes.
         /// </summary>
-        public void LoginWithCertificateAndDataBoxId(System.IO.Stream certificateStream, string dataBoxId, string? password = null)
+        /// <param name="certificateStream">Stream containing certificate data (PFX/P12 format)</param>
+        /// <param name="dataBoxId">Target DataBox ID to access</param>
+        /// <param name="password">Optional password for the certificate</param>
+        /// <param name="storageFlags">Optional X509 storage flags (defaults to MachineKeySet | PersistKeySet | Exportable)</param>
+        public void LoginWithCertificateAndDataBoxId(Stream certificateStream, string dataBoxId, string? password = null, X509KeyStorageFlags? storageFlags = null)
         {
             if (certificateStream == null)
                 throw new ArgumentNullException(nameof(certificateStream));
             
-            using var ms = new System.IO.MemoryStream();
+            using MemoryStream ms = new MemoryStream();
             certificateStream.CopyTo(ms);
-            LoginWithCertificateAndDataBoxId(ms.ToArray(), dataBoxId, password);
+            LoginWithCertificateAndDataBoxId(ms.ToArray(), dataBoxId, password, storageFlags);
         }
 
         /// <summary>
@@ -183,6 +217,12 @@ namespace DatovkaSharp
                 Binding binding = CreateBinding();
                 _accessClient = new DataBoxAccessPortTypeClient(binding, endpoint);
                 ConfigureClient(_accessClient.ClientCredentials);
+                
+                // Add HSS behavior for Basic auth header injection
+                if (_useCertificate && _certAuthMode == CertificateAuthenticationMode.HostedFilingService && !string.IsNullOrEmpty(_dataBoxId))
+                {
+                    _accessClient.Endpoint.EndpointBehaviors.Add(new HssAuthBehavior(_dataBoxId));
+                }
             }
             return _accessClient;
         }
@@ -198,6 +238,12 @@ namespace DatovkaSharp
                 Binding binding = CreateBinding();
                 _searchClient = new DataBoxSearchPortTypeClient(binding, endpoint);
                 ConfigureClient(_searchClient.ClientCredentials);
+                
+                // Add HSS behavior for Basic auth header injection
+                if (_useCertificate && _certAuthMode == CertificateAuthenticationMode.HostedFilingService && !string.IsNullOrEmpty(_dataBoxId))
+                {
+                    _searchClient.Endpoint.EndpointBehaviors.Add(new HssAuthBehavior(_dataBoxId));
+                }
             }
             return _searchClient;
         }
@@ -213,6 +259,12 @@ namespace DatovkaSharp
                 Binding binding = CreateBinding();
                 _infoClient = new dmInfoPortTypeClient(binding, endpoint);
                 ConfigureClient(_infoClient.ClientCredentials);
+                
+                // Add HSS behavior for Basic auth header injection
+                if (_useCertificate && _certAuthMode == CertificateAuthenticationMode.HostedFilingService && !string.IsNullOrEmpty(_dataBoxId))
+                {
+                    _infoClient.Endpoint.EndpointBehaviors.Add(new HssAuthBehavior(_dataBoxId));
+                }
             }
             return _infoClient;
         }
@@ -228,6 +280,12 @@ namespace DatovkaSharp
                 Binding binding = CreateBinding();
                 _operationsClient = new dmOperationsPortTypeClient(binding, endpoint);
                 ConfigureClient(_operationsClient.ClientCredentials);
+                
+                // Add HSS behavior for Basic auth header injection
+                if (_useCertificate && _certAuthMode == CertificateAuthenticationMode.HostedFilingService && !string.IsNullOrEmpty(_dataBoxId))
+                {
+                    _operationsClient.Endpoint.EndpointBehaviors.Add(new HssAuthBehavior(_dataBoxId));
+                }
             }
             return _operationsClient;
         }
@@ -243,6 +301,12 @@ namespace DatovkaSharp
                 Binding binding = CreateBinding();
                 _statClient = new IsdsStatPortTypeClient(binding, endpoint);
                 ConfigureClient(_statClient.ClientCredentials);
+                
+                // Add HSS behavior for Basic auth header injection
+                if (_useCertificate && _certAuthMode == CertificateAuthenticationMode.HostedFilingService && !string.IsNullOrEmpty(_dataBoxId))
+                {
+                    _statClient.Endpoint.EndpointBehaviors.Add(new HssAuthBehavior(_dataBoxId));
+                }
             }
             return _statClient;
         }
@@ -258,6 +322,12 @@ namespace DatovkaSharp
                 Binding binding = CreateBinding();
                 _vodzClient = new dmVoDZPortTypeClient(binding, endpoint);
                 ConfigureClient(_vodzClient.ClientCredentials);
+                
+                // Add HSS behavior for Basic auth header injection
+                if (_useCertificate && _certAuthMode == CertificateAuthenticationMode.HostedFilingService && !string.IsNullOrEmpty(_dataBoxId))
+                {
+                    _vodzClient.Endpoint.EndpointBehaviors.Add(new HssAuthBehavior(_dataBoxId));
+                }
             }
             return _vodzClient;
         }
@@ -329,15 +399,9 @@ namespace DatovkaSharp
                 CloseTimeout = TimeSpan.FromMinutes(1)
             };
 
-            if (_useCertificate)
-            {
-                binding.Security.Transport.ClientCredentialType = HttpClientCredentialType.Certificate;
-            }
-            else
-            {
-                binding.Security.Transport.ClientCredentialType = HttpClientCredentialType.Basic;
-            }
-
+            // Both SS and HSS modes use Certificate at transport level
+            // HSS additionally sends DataBox ID in Basic auth header
+            binding.Security.Transport.ClientCredentialType = _useCertificate ? HttpClientCredentialType.Certificate : HttpClientCredentialType.Basic;
             return binding;
         }
 
@@ -354,31 +418,44 @@ namespace DatovkaSharp
                 }
                 else if (_certificateBytes != null)
                 {
-                    // From byte array
+                    // From byte array with customizable storage flags
                     cert = string.IsNullOrEmpty(_password)
-                        ? new X509Certificate2(_certificateBytes)
-                        : new X509Certificate2(_certificateBytes, _password);
+                        ? new X509Certificate2(_certificateBytes, (string?)null, _certificateStorageFlags)
+                        : new X509Certificate2(_certificateBytes, _password, _certificateStorageFlags);
                 }
                 else if (!string.IsNullOrEmpty(_certificatePath))
                 {
-                    // From file
+                    // From file with customizable storage flags
                     cert = string.IsNullOrEmpty(_password)
-                        ? new X509Certificate2(_certificatePath)
-                        : new X509Certificate2(_certificatePath, _password);
+                        ? new X509Certificate2(_certificatePath, (string?)null, _certificateStorageFlags)
+                        : new X509Certificate2(_certificatePath, _password, _certificateStorageFlags);
                 }
                 else
                 {
                     throw new DataBoxException("Certificate object, path, or bytes must be provided");
                 }
                 
+                // Validate that certificate has a private key (required for TLS authentication)
+                if (!cert.HasPrivateKey)
+                {
+                    string modeDescription = _certAuthMode == CertificateAuthenticationMode.HostedFilingService 
+                        ? "HSS (Hostovaná spisová služba)" 
+                        : "SS (Spisová služba)";
+                    throw new DataBoxException(
+                        $"Certificate does not contain a private key, which is required for {modeDescription} authentication. " +
+                        $"Ensure you are using a PFX/P12 file with the private key included, or provide the correct password if the certificate is password-protected. " +
+                        $"Certificate subject: {cert.Subject}");
+                }
+                
                 if (credentials != null)
                 {
                     credentials.ClientCertificate.Certificate = cert;
                     
-                    // HSS mode requires DataBox ID in username
+                    // HSS mode requires DataBox ID in username (with empty password to trigger Basic auth header)
                     if (_certAuthMode == CertificateAuthenticationMode.HostedFilingService)
                     {
                         credentials.UserName.UserName = _dataBoxId;
+                        credentials.UserName.Password = string.Empty;
                     }
                 }
             }
@@ -393,16 +470,27 @@ namespace DatovkaSharp
         /// <summary>
         /// Test the connection to ISDS
         /// </summary>
-        public async Task<bool> TestConnectionAsync()
+        public async Task<DatovkaResult<bool>> TestConnectionAsync()
         {
             try
             {
                 DatovkaResult<string> result = await Api.GetStatsAsync();
-                return result.IsSuccess;
+                return new DatovkaResult<bool>
+                {
+                    RawResponse = result.RawResponse,
+                    Data = result.IsSuccess,
+                    StatusCode = result.StatusCode,
+                    StatusMessage = result.StatusMessage
+                };
             }
-            catch
+            catch (Exception e)
             {
-                return false;
+                return new DatovkaResult<bool>
+                {
+                    Data = false,
+                    RawResponse = e,
+                    StatusCode = "500"
+                };
             }
         }
 

@@ -4,7 +4,9 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using DatovkaSharp.Services.Access;
+using DatovkaSharp.Services.Search;
 using NUnit.Framework.Legacy;
+using tDbOwnerInfo = DatovkaSharp.Services.Access.tDbOwnerInfo;
 
 namespace DatovkaSharp.Tests
 {
@@ -31,10 +33,10 @@ namespace DatovkaSharp.Tests
         public async Task TestConnection_ShouldSucceed()
         {
             // Act
-            bool connected = await _client!.TestConnectionAsync();
+            DatovkaResult<bool> connected = await _client!.TestConnectionAsync();
 
             // Assert
-            ClassicAssert.IsTrue(connected, "Connection to test environment should succeed");
+            ClassicAssert.IsTrue(connected.IsSuccess, "Connection to test environment should succeed");
         }
 
         [Test]
@@ -101,7 +103,7 @@ namespace DatovkaSharp.Tests
         public async Task GetDataBoxCreditInfo_ShouldReturnCreditData()
         {
             // Arrange & Act
-            var result = await _client!.Api.GetDataBoxCreditInfoAsync();
+            DatovkaResult<tDBCreditInfoOutput> result = await _client!.Api.GetDataBoxCreditInfoAsync();
 
             // Assert
             ClassicAssert.IsTrue(result.IsSuccess, $"Should get credit info. Got: {result.StatusMessage}");
@@ -123,11 +125,11 @@ namespace DatovkaSharp.Tests
         public async Task GetDataBoxCreditInfo_WithDateRange_ShouldReturnCreditHistory()
         {
             // Arrange
-            var fromDate = DateTime.Now.AddDays(-30);
-            var toDate = DateTime.Now;
+            DateTime fromDate = DateTime.Now.AddDays(-30);
+            DateTime toDate = DateTime.Now;
 
             // Act
-            var result = await _client!.Api.GetDataBoxCreditInfoAsync(
+            DatovkaResult<tDBCreditInfoOutput> result = await _client!.Api.GetDataBoxCreditInfoAsync(
                 dataBoxId: null,  // Use logged-in user's ID
                 fromDate: fromDate,
                 toDate: toDate
@@ -143,7 +145,7 @@ namespace DatovkaSharp.Tests
             if (result.Data.ciRecords is { Length: > 0 })
             {
                 Console.WriteLine($"  Credit history records: {result.Data.ciRecords.Length}");
-                foreach (var record in result.Data.ciRecords.Take(3))  // Show first 3
+                foreach (tCiRecord? record in result.Data.ciRecords.Take(3))  // Show first 3
                 {
                     Console.WriteLine($"    - {record.ciEventTime:yyyy-MM-dd HH:mm:ss}: {record.ciEventType}, Change: {record.ciCreditChange}, After: {record.ciCreditAfter}");
                 }

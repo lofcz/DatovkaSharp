@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
+using DatovkaSharp.Services.Access;
 
 namespace DatovkaSharp.Tests
 {
@@ -59,7 +60,7 @@ namespace DatovkaSharp.Tests
             _client = new DatovkaClient(DataBoxEnvironment.Test);
             // Create a minimal certificate for testing the method signature (would fail on actual connection)
 #pragma warning disable SYSLIB0026 // X509Certificate2() is obsolete
-            var cert = new X509Certificate2();
+            X509Certificate2 cert = new X509Certificate2();
 #pragma warning restore SYSLIB0026
 
             // Act - this will succeed in setting up, actual connection test would fail with invalid cert
@@ -77,7 +78,7 @@ namespace DatovkaSharp.Tests
             // Arrange
             _client = new DatovkaClient(DataBoxEnvironment.Test);
 #pragma warning disable SYSLIB0026 // X509Certificate2() is obsolete
-            var cert = new X509Certificate2();
+            X509Certificate2 cert = new X509Certificate2();
 #pragma warning restore SYSLIB0026
 
             // Act
@@ -114,7 +115,7 @@ namespace DatovkaSharp.Tests
             byte[] fakeCertData = new byte[] { 1, 2, 3, 4, 5 };
 
             // Act
-            using (var stream = new MemoryStream(fakeCertData))
+            using (MemoryStream stream = new MemoryStream(fakeCertData))
             {
                 Assert.DoesNotThrow(() =>
                 {
@@ -146,14 +147,14 @@ namespace DatovkaSharp.Tests
             _client.LoginWithCertificate(_certConfig.SSCertificatePath, _certConfig.SSCertificatePassword);
 
             // Try to connect
-            var connected = await _client.TestConnectionAsync();
+            DatovkaResult<bool> connected = await _client.TestConnectionAsync();
 
             // Assert
-            ClassicAssert.IsTrue(connected, "Connection with SS certificate should succeed");
+            ClassicAssert.IsTrue(connected.IsSuccess, "Connection with SS certificate should succeed");
             Console.WriteLine("✓ SS mode authentication successful");
 
             // Try to get data box info
-            var result = await _client.Api.GetDataBoxInfoAsync();
+            DatovkaResult<tDbOwnerInfo> result = await _client.Api.GetDataBoxInfoAsync();
             if (result.IsSuccess)
             {
                 Console.WriteLine($"  Data Box ID: {result.Data?.dbID}");
@@ -178,7 +179,7 @@ namespace DatovkaSharp.Tests
 
             // Arrange
             _client = new DatovkaClient(DataBoxEnvironment.Test);
-            byte[] certBytes = File.ReadAllBytes(_certConfig.SSCertificatePath);
+            byte[] certBytes = await File.ReadAllBytesAsync(_certConfig.SSCertificatePath);
             
             Console.WriteLine($"Testing SS mode with certificate from byte array");
 
@@ -186,10 +187,10 @@ namespace DatovkaSharp.Tests
             _client.LoginWithCertificate(certBytes, _certConfig.SSCertificatePassword);
 
             // Try to connect
-            var connected = await _client.TestConnectionAsync();
+            DatovkaResult<bool> connected = await _client.TestConnectionAsync();
 
             // Assert
-            ClassicAssert.IsTrue(connected, "Connection with SS certificate from byte array should succeed");
+            ClassicAssert.IsTrue(connected.IsSuccess, "Connection with SS certificate from byte array should succeed");
             Console.WriteLine("✓ SS mode authentication from byte array successful");
         }
 
@@ -211,16 +212,16 @@ namespace DatovkaSharp.Tests
             Console.WriteLine($"Testing SS mode with certificate from stream");
 
             // Act
-            using (var stream = File.OpenRead(_certConfig.SSCertificatePath))
+            await using (FileStream stream = File.OpenRead(_certConfig.SSCertificatePath))
             {
                 _client.LoginWithCertificate(stream, _certConfig.SSCertificatePassword);
             }
 
             // Try to connect
-            var connected = await _client.TestConnectionAsync();
+            DatovkaResult<bool> connected = await _client.TestConnectionAsync();
 
             // Assert
-            ClassicAssert.IsTrue(connected, "Connection with SS certificate from stream should succeed");
+            ClassicAssert.IsTrue(connected.IsSuccess, "Connection with SS certificate from stream should succeed");
             Console.WriteLine("✓ SS mode authentication from stream successful");
         }
 
@@ -239,10 +240,10 @@ namespace DatovkaSharp.Tests
             // Arrange
             _client = new DatovkaClient(DataBoxEnvironment.Test);
             
-            // Load certificate as X509Certificate2
-            var cert = string.IsNullOrEmpty(_certConfig.SSCertificatePassword)
-                ? new X509Certificate2(_certConfig.SSCertificatePath)
-                : new X509Certificate2(_certConfig.SSCertificatePath, _certConfig.SSCertificatePassword);
+            // Load certificate as X509Certificate2 with proper flags for private key access
+            X509Certificate2 cert = string.IsNullOrEmpty(_certConfig.SSCertificatePassword)
+                ? new X509Certificate2(_certConfig.SSCertificatePath, (string?)null, X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.Exportable)
+                : new X509Certificate2(_certConfig.SSCertificatePath, _certConfig.SSCertificatePassword, X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.Exportable);
             
             Console.WriteLine($"Testing SS mode with X509Certificate2 object");
 
@@ -250,10 +251,10 @@ namespace DatovkaSharp.Tests
             _client.LoginWithCertificate(cert);
 
             // Try to connect
-            var connected = await _client.TestConnectionAsync();
+            DatovkaResult<bool> connected = await _client.TestConnectionAsync();
 
             // Assert
-            ClassicAssert.IsTrue(connected, "Connection with SS certificate as X509Certificate2 should succeed");
+            ClassicAssert.IsTrue(connected.IsSuccess, "Connection with SS certificate as X509Certificate2 should succeed");
             Console.WriteLine("✓ SS mode authentication with X509Certificate2 successful");
         }
 
@@ -283,14 +284,14 @@ namespace DatovkaSharp.Tests
                 _certConfig.HSSCertificatePassword);
 
             // Try to connect
-            var connected = await _client.TestConnectionAsync();
+            DatovkaResult<bool> connected = await _client.TestConnectionAsync();
 
             // Assert
-            ClassicAssert.IsTrue(connected, "Connection with HSS certificate should succeed");
+            ClassicAssert.IsTrue(connected.IsSuccess, "Connection with HSS certificate should succeed");
             Console.WriteLine("✓ HSS mode authentication successful");
 
             // Try to get data box info
-            var result = await _client.Api.GetDataBoxInfoAsync();
+            DatovkaResult<tDbOwnerInfo> result = await _client.Api.GetDataBoxInfoAsync();
             if (result.IsSuccess)
             {
                 Console.WriteLine($"  Data Box ID: {result.Data?.dbID}");
@@ -317,7 +318,7 @@ namespace DatovkaSharp.Tests
 
             // Arrange
             _client = new DatovkaClient(DataBoxEnvironment.Test);
-            byte[] certBytes = File.ReadAllBytes(_certConfig.HSSCertificatePath);
+            byte[] certBytes = await File.ReadAllBytesAsync(_certConfig.HSSCertificatePath);
             
             Console.WriteLine($"Testing HSS mode with certificate from byte array");
             Console.WriteLine($"Target DataBox ID: {_certConfig.HSSDataBoxId}");
@@ -326,10 +327,10 @@ namespace DatovkaSharp.Tests
             _client.LoginWithCertificateAndDataBoxId(certBytes, _certConfig.HSSDataBoxId, _certConfig.HSSCertificatePassword);
 
             // Try to connect
-            var connected = await _client.TestConnectionAsync();
+            DatovkaResult<bool> connected = await _client.TestConnectionAsync();
 
             // Assert
-            ClassicAssert.IsTrue(connected, "Connection with HSS certificate from byte array should succeed");
+            ClassicAssert.IsTrue(connected.IsSuccess, "Connection with HSS certificate from byte array should succeed");
             Console.WriteLine("✓ HSS mode authentication from byte array successful");
         }
 
@@ -353,16 +354,16 @@ namespace DatovkaSharp.Tests
             Console.WriteLine($"Target DataBox ID: {_certConfig.HSSDataBoxId}");
 
             // Act
-            using (var stream = File.OpenRead(_certConfig.HSSCertificatePath))
+            await using (FileStream stream = File.OpenRead(_certConfig.HSSCertificatePath))
             {
                 _client.LoginWithCertificateAndDataBoxId(stream, _certConfig.HSSDataBoxId, _certConfig.HSSCertificatePassword);
             }
 
             // Try to connect
-            var connected = await _client.TestConnectionAsync();
+            DatovkaResult<bool> connected = await _client.TestConnectionAsync();
 
             // Assert
-            ClassicAssert.IsTrue(connected, "Connection with HSS certificate from stream should succeed");
+            ClassicAssert.IsTrue(connected.IsSuccess, "Connection with HSS certificate from stream should succeed");
             Console.WriteLine("✓ HSS mode authentication from stream successful");
         }
 
@@ -382,22 +383,25 @@ namespace DatovkaSharp.Tests
             // Arrange
             _client = new DatovkaClient(DataBoxEnvironment.Test);
             
-            // Load certificate as X509Certificate2
-            var cert = string.IsNullOrEmpty(_certConfig.HSSCertificatePassword)
-                ? new X509Certificate2(_certConfig.HSSCertificatePath)
-                : new X509Certificate2(_certConfig.HSSCertificatePath, _certConfig.HSSCertificatePassword);
+            // Load certificate as X509Certificate2 with proper flags for private key access
+            X509Certificate2 cert = string.IsNullOrEmpty(_certConfig.HSSCertificatePassword)
+                ? new X509Certificate2(_certConfig.HSSCertificatePath, (string?)null, X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.Exportable)
+                : new X509Certificate2(_certConfig.HSSCertificatePath, _certConfig.HSSCertificatePassword, X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.Exportable);
             
             Console.WriteLine($"Testing HSS mode with X509Certificate2 object");
+            Console.WriteLine($"Certificate loaded: {cert.Subject}");
+            Console.WriteLine($"Has Private Key: {cert.HasPrivateKey}");
+            Console.WriteLine($"Certificate Thumbprint: {cert.Thumbprint}");
             Console.WriteLine($"Target DataBox ID: {_certConfig.HSSDataBoxId}");
 
             // Act
             _client.LoginWithCertificateAndDataBoxId(cert, _certConfig.HSSDataBoxId);
 
             // Try to connect
-            var connected = await _client.TestConnectionAsync();
+            DatovkaResult<bool> connected = await _client.TestConnectionAsync();
 
             // Assert
-            ClassicAssert.IsTrue(connected, "Connection with HSS certificate as X509Certificate2 should succeed");
+            ClassicAssert.IsTrue(connected.IsSuccess, "Connection with HSS certificate as X509Certificate2 should succeed");
             Console.WriteLine("✓ HSS mode authentication with X509Certificate2 successful");
         }
     }
