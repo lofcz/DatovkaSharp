@@ -129,11 +129,20 @@ namespace DatovkaSharp
             _certificate = certificate ?? throw new ArgumentNullException(nameof(certificate));
             
             // Validate that certificate has a private key
-            if (!_certificate.HasPrivateKey)
+            try
+            {
+                if (!_certificate.HasPrivateKey)
+                {
+                    throw new DataBoxException(
+                        $"Certificate does not contain a private key, which is required for SS (Spisová služba) authentication. " +
+                        $"Certificate subject: {_certificate.Subject}");
+                }
+            }
+            catch (System.Security.Cryptography.CryptographicException ex)
             {
                 throw new DataBoxException(
-                    $"Certificate does not contain a private key, which is required for SS (Spisová služba) authentication. " +
-                    $"Certificate subject: {_certificate.Subject}");
+                    "Invalid or empty certificate provided. Ensure you load the certificate with the private key included (e.g., from a PFX file with proper X509KeyStorageFlags).",
+                    ex);
             }
             
             _useCertificate = true;
@@ -213,12 +222,21 @@ namespace DatovkaSharp
             _dataBoxId = dataBoxId ?? throw new ArgumentNullException(nameof(dataBoxId));
             
             // Validate that certificate has a private key
-            if (!_certificate.HasPrivateKey)
+            try
+            {
+                if (!_certificate.HasPrivateKey)
+                {
+                    throw new DataBoxException(
+                        $"Certificate does not contain a private key, which is required for HSS (Hostovaná spisová služba) authentication. " +
+                        $"Ensure you are using a PFX/P12 file with the private key included. " +
+                        $"Certificate subject: {_certificate.Subject}");
+                }
+            }
+            catch (System.Security.Cryptography.CryptographicException ex)
             {
                 throw new DataBoxException(
-                    $"Certificate does not contain a private key, which is required for HSS (Hostovaná spisová služba) authentication. " +
-                    $"Ensure you are using a PFX/P12 file with the private key included. " +
-                    $"Certificate subject: {_certificate.Subject}");
+                    "Invalid or empty certificate provided. Ensure you load the certificate with the private key included (e.g., from a PFX file with proper X509KeyStorageFlags).",
+                    ex);
             }
             
             _useCertificate = true;

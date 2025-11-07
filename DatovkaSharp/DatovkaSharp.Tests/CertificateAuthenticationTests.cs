@@ -3,15 +3,27 @@ using NUnit.Framework.Legacy;
 using DatovkaSharp;
 using System;
 using System.IO;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using DatovkaSharp.Services.Access;
+using Org.BouncyCastle.Asn1.X509;
+using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Crypto.Generators;
+using Org.BouncyCastle.Crypto.Operators;
+using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Crypto.Prng;
+using Org.BouncyCastle.Math;
+using Org.BouncyCastle.Security;
+using Org.BouncyCastle.X509;
 
 namespace DatovkaSharp.Tests
 {
     [TestFixture]
     public class CertificateAuthenticationTests
     {
+        private const string SignatureAlgorithm = "SHA256WithRSA";
+        
         private DatovkaClient? _client;
         private CertificateConfig? _certConfig;
 
@@ -25,6 +37,58 @@ namespace DatovkaSharp.Tests
         public void TearDown()
         {
             _client?.Dispose();
+        }
+
+        /// <summary>
+        /// Generate a self-signed certificate with a private key for testing purposes
+        /// </summary>
+        private static X509Certificate2 GenerateTestCertificateWithPrivateKey()
+        {
+            // Generate RSA key pair
+            CryptoApiRandomGenerator randomGenerator = new CryptoApiRandomGenerator();
+            SecureRandom random = new SecureRandom(randomGenerator);
+            KeyGenerationParameters keyGenerationParameters = new KeyGenerationParameters(random, 2048);
+            
+            RsaKeyPairGenerator keyPairGenerator = new RsaKeyPairGenerator();
+            keyPairGenerator.Init(keyGenerationParameters);
+            AsymmetricCipherKeyPair keyPair = keyPairGenerator.GenerateKeyPair();
+
+            // Generate certificate
+            X509V3CertificateGenerator certificateGenerator = new X509V3CertificateGenerator();
+            BigInteger? serialNumber = BigInteger.ProbablePrime(120, new Random());
+            
+            certificateGenerator.SetSerialNumber(serialNumber);
+            certificateGenerator.SetIssuerDN(new X509Name("CN=Test Certificate"));
+            certificateGenerator.SetSubjectDN(new X509Name("CN=Test Certificate"));
+            certificateGenerator.SetNotBefore(DateTime.UtcNow.Date);
+            certificateGenerator.SetNotAfter(DateTime.UtcNow.Date.AddYears(1));
+            certificateGenerator.SetPublicKey(keyPair.Public);
+
+            // Sign the certificate
+            Asn1SignatureFactory signatureFactory = new Asn1SignatureFactory("SHA256WithRSA", keyPair.Private, random);
+            Org.BouncyCastle.X509.X509Certificate bcCertificate = certificateGenerator.Generate(signatureFactory);
+
+            // Convert to System.Security.Cryptography.X509Certificates.X509Certificate2
+            X509Certificate2 cert = new X509Certificate2(bcCertificate.GetEncoded());
+            
+            // Attach the private key using cross-platform approach
+            RsaPrivateCrtKeyParameters? rsaParams = (RsaPrivateCrtKeyParameters)keyPair.Private;
+            RSA rsa = RSA.Create();
+            rsa.ImportParameters(new RSAParameters
+            {
+                Modulus = rsaParams.Modulus.ToByteArrayUnsigned(),
+                Exponent = rsaParams.PublicExponent.ToByteArrayUnsigned(),
+                D = rsaParams.Exponent.ToByteArrayUnsigned(),
+                P = rsaParams.P.ToByteArrayUnsigned(),
+                Q = rsaParams.Q.ToByteArrayUnsigned(),
+                DP = rsaParams.DP.ToByteArrayUnsigned(),
+                DQ = rsaParams.DQ.ToByteArrayUnsigned(),
+                InverseQ = rsaParams.QInv.ToByteArrayUnsigned()
+            });
+            
+            X509Certificate2 certWithKey = cert.CopyWithPrivateKey(rsa);
+            
+            return certWithKey;
         }
 
         [Test]
@@ -58,12 +122,17 @@ namespace DatovkaSharp.Tests
         {
             // Arrange
             _client = new DatovkaClient(DataBoxEnvironment.Test);
-            // Create a minimal certificate for testing the method signature (would fail on actual connection)
-#pragma warning disable SYSLIB0026 // X509Certificate2() is obsolete
-            X509Certificate2 cert = new X509Certificate2();
-#pragma warning restore SYSLIB0026
+            
+            // Generate a valid test certificate with private key
+            X509Certificate2 cert = GenerateTestCertificateWithPrivateKey();
+            
+            Console.WriteLine($"Generated test certificate:");
+            Console.WriteLine($"  Subject: {cert.Subject}");
+            Console.WriteLine($"  Has Private Key: {cert.HasPrivateKey}");
+            Console.WriteLine($"  Valid From: {cert.NotBefore}");
+            Console.WriteLine($"  Valid To: {cert.NotAfter}");
 
-            // Act - this will succeed in setting up, actual connection test would fail with invalid cert
+            // Act - this should succeed with a valid certificate containing a private key
             Assert.DoesNotThrow(() =>
             {
                 _client.LoginWithCertificate(cert);
@@ -73,16 +142,16 @@ namespace DatovkaSharp.Tests
         }
 
         [Test]
-        public void LoginWithCertificateAndDataBoxId_WithX509Certificate2_ShouldSucceed()
+        public void LoginWithCertificateAndDataBoxId_WithInvalidX509Certificate2_ShouldThrow()
         {
             // Arrange
             _client = new DatovkaClient(DataBoxEnvironment.Test);
 #pragma warning disable SYSLIB0026 // X509Certificate2() is obsolete
-            X509Certificate2 cert = new X509Certificate2();
+            X509Certificate2 cert = new X509Certificate2(); // invalid cert without PK
 #pragma warning restore SYSLIB0026
 
             // Act
-            Assert.DoesNotThrow(() =>
+            Assert.Throws<DataBoxException>(() =>
             {
                 _client.LoginWithCertificateAndDataBoxId(cert, "testbox123");
             });
