@@ -127,6 +127,15 @@ namespace DatovkaSharp
         public void LoginWithCertificate(X509Certificate2 certificate)
         {
             _certificate = certificate ?? throw new ArgumentNullException(nameof(certificate));
+            
+            // Validate that certificate has a private key
+            if (!_certificate.HasPrivateKey)
+            {
+                throw new DataBoxException(
+                    $"Certificate does not contain a private key, which is required for SS (Spisová služba) authentication. " +
+                    $"Certificate subject: {_certificate.Subject}");
+            }
+            
             _useCertificate = true;
             _certAuthMode = CertificateAuthenticationMode.FilingService;
         }
@@ -202,6 +211,16 @@ namespace DatovkaSharp
         {
             _certificate = certificate ?? throw new ArgumentNullException(nameof(certificate));
             _dataBoxId = dataBoxId ?? throw new ArgumentNullException(nameof(dataBoxId));
+            
+            // Validate that certificate has a private key
+            if (!_certificate.HasPrivateKey)
+            {
+                throw new DataBoxException(
+                    $"Certificate does not contain a private key, which is required for HSS (Hostovaná spisová služba) authentication. " +
+                    $"Ensure you are using a PFX/P12 file with the private key included. " +
+                    $"Certificate subject: {_certificate.Subject}");
+            }
+            
             _useCertificate = true;
             _certAuthMode = CertificateAuthenticationMode.HostedFilingService;
         }
