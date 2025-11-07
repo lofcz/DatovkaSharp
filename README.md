@@ -20,7 +20,7 @@ _Sponsored by Scio_
 
 ## ✨ Features
 
-- Full support for Czech Data Box API ([v3.0.9](https://info.mojedatovaschranka.cz/info/files/2224_Info_pro_vyvojare_2025_9.pdf))
+- Full support for Czech Data Box API (2025/09, [v3.0.9](https://info.mojedatovaschranka.cz/info/files/2224_Info_pro_vyvojare_2025_9.pdf))
 - Multiple authentication methods:
   - Username/Password
   - Certificate-based (Spisová služba - SS mode)
