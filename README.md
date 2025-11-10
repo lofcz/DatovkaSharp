@@ -652,6 +652,8 @@ DatovkaSharp/
 
 ## Testing
 
+Run the following from terminal:
+
 ```bash
 dotnet test
 ```
